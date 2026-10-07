@@ -53,6 +53,14 @@ export function safeNext(value) {
   return decoded.startsWith("//") || unsafe(decoded) ? "/dashboard" : value;
 }
 export function safeUrl(value) {
+  if (
+    typeof value !== "string" ||
+    value.length > 2000 ||
+    !/^https?:\/\/(\[[0-9a-fA-F:]+\]|[a-zA-Z0-9][a-zA-Z0-9.-]*)(:[0-9]{1,5})?([/?#][^\s\\]*)?$/.test(
+      value,
+    )
+  )
+    return false;
   try {
     const u = new URL(value);
     return ["https:", "http:"].includes(u.protocol) && !u.username && !u.password;

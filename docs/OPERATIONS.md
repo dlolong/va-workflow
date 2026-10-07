@@ -8,7 +8,7 @@ Use isolated staging and production Supabase projects. Keep migrations tracked, 
 
 The worker acquires a transaction-scoped singleton lock; overlapping scheduler calls do not duplicate a generation pass. It catches up at most 31 occurrences per schedule per invocation. A missing/removed required assignee or reviewer prevents generation rather than silently granting access. Inspect and fix these schedules explicitly. Because paused schedules retain their next due date, resuming may generate missed work. Existing runs are never deleted by pausing.
 
-Emails are claimed with a five-minute lease, use provider idempotency keys, and retry at increasing intervals up to five attempts. An exhausted lease is marked failed on a later claim pass rather than remaining silently stuck. Database acknowledgement failure after a provider accepted mail still requires operational attention; do not claim exactly-once email delivery across every failure mode.
+Emails are claimed with a five-minute lease, use provider idempotency keys, and retry at increasing intervals up to five attempts. An exhausted lease is marked failed on a later claim pass rather than remaining silently stuck. Acknowledgements carry the claimed attempt number; expired/reclaimed leases reject stale acknowledgements. The cron endpoint returns HTTP 503 if acknowledgement fails. Database acknowledgement failure after a provider accepted mail still requires operational attention; do not claim exactly-once email delivery across every failure mode.
 
 Without provider configuration, notifications remain in the application/outbox and are not marked sent. Review whether an old backlog should be sent before enabling email on an established workspace. Respect disabled email preferences and removed memberships. Settings shows counters, not a full delivery-management console.
 
@@ -41,3 +41,7 @@ For a never-deployed fresh starter, correct initial migrations before first use.
 ## Capacity
 
 The scheduler serializes workspace modifications for safety; this design targets a small pilot, not high-volume parallel agency operations. Supporting UI lists have explicit caps; exports are not transaction-consistent. Observe actual workload, query latency, Storage usage, queue depth and host runtime limits before expanding. Add pagination/queue batching in response to validated usage rather than silently raising arbitrary limits.
+
+## October 7 local rehearsal
+
+A full custom-format PostgreSQL dump of the disposable VA Relay stack was restored into a separate database in the same local container using its infrastructure role. All 66 rollback-only database checks passed on the restored database. This was a database-only rehearsal: it did not restore Storage bytes to a separate Storage service or validate a hosted deployment's recovery time/retention. Keep the complete deployment-specific rehearsal above as a launch requirement. See `QA_REPORT.md` for commands and failures encountered before the successful restore.

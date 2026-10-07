@@ -12,6 +12,7 @@ export function StepEditor({
   saved,
   data,
   editable,
+  refreshing,
   dirtyChanged,
   refresh,
 }: {
@@ -20,6 +21,7 @@ export function StepEditor({
   saved?: ResponseRow;
   data: RunBundle;
   editable: boolean;
+  refreshing: boolean;
   dirtyChanged: (id: string, dirty: boolean) => void;
   refresh: () => void;
 }) {
@@ -30,10 +32,12 @@ export function StepEditor({
   const [dirty, setDirty] = useState(false);
   const [savedNotice, setSavedNotice] = useState("");
   const [previousSaved, setPreviousSaved] = useState(saved);
+  const [conflict, setConflict] = useState(false);
   // Refresh confirmed answers without remounting selected/in-flight uploads.
   // Keep a local draft when another session changes its saved response.
   if (saved !== previousSaved) {
     setPreviousSaved(saved);
+    if (dirty && saved?.updated_at !== previousSaved?.updated_at) setConflict(true);
     if (!dirty) {
       setValue(saved?.value ?? null);
       setNa(saved?.not_applicable || false);
@@ -128,6 +132,7 @@ export function StepEditor({
           className="stack-sm"
           onSubmit={async (e) => {
             e.preventDefault();
+            if (conflict || busy || refreshing) return;
             try {
               await execute("save_response", {
                 run_id: data.run.id,
@@ -152,7 +157,7 @@ export function StepEditor({
                 id={`step-na-${step.id}`}
                 type="checkbox"
                 checked={na}
-                disabled={!editable || busy}
+                disabled={!editable || busy || refreshing}
                 onChange={(e) => {
                   setNa(e.target.checked);
                   setDirty(true);
@@ -168,7 +173,7 @@ export function StepEditor({
                 id={`step-na-reason-${step.id}`}
                 value={reason}
                 required
-                disabled={!editable || busy}
+                disabled={!editable || busy || refreshing}
                 onChange={(e) => {
                   setReason(e.target.value);
                   setDirty(true);
@@ -178,7 +183,7 @@ export function StepEditor({
             </Field>
           ) : (
             <fieldset
-              disabled={!editable || busy || locked}
+              disabled={!editable || busy || refreshing || locked}
               style={{ border: 0, padding: 0, margin: 0 }}
             >
               {step.kind === "checkbox" ? (
@@ -261,6 +266,12 @@ export function StepEditor({
             </fieldset>
           )}
           {error && <Notice error>{error}</Notice>}
+          {conflict && (
+            <Notice error>
+              This answer changed in another session. Your draft is still here; copy it before
+              reloading to compare the saved answer.
+            </Notice>
+          )}
           {savedNotice && (
             <p className="saved" role="status">
               {savedNotice}
@@ -272,7 +283,7 @@ export function StepEditor({
                 id={`save-step-${step.id}`}
                 type="submit"
                 className="btn small"
-                disabled={busy}
+                disabled={busy || refreshing || conflict}
               >
                 {busy ? "Saving…" : dirty ? "Save step" : "Save answer"}
               </button>
@@ -296,9 +307,13 @@ export function StepEditor({
             .
           </p>
         )}
-        {editable && !na && !locked && (
-          <EvidenceUpload step={step} data={data} dirtyChanged={dirtyChanged} refresh={refresh} />
-        )}
+        <EvidenceUpload
+          step={step}
+          data={data}
+          disabled={!editable || na || locked}
+          dirtyChanged={dirtyChanged}
+          refresh={refresh}
+        />
       </div>
     </section>
   );
@@ -324,11 +339,13 @@ function EvidenceLink({ file }: { file: Evidence }) {
 function EvidenceUpload({
   step,
   data,
+  disabled,
   dirtyChanged,
   refresh,
 }: {
   step: Step;
   data: RunBundle;
+  disabled: boolean;
   dirtyChanged: (id: string, dirty: boolean) => void;
   refresh: () => void;
 }) {
@@ -343,7 +360,7 @@ function EvidenceUpload({
     key: string;
   } | null>(null);
   const upload = async () => {
-    if (!file) return;
+    if (!file || disabled) return;
     setUploading(true);
     setFailure("");
     dirtyChanged(`upload-${step.id}`, true);
@@ -383,11 +400,15 @@ function EvidenceUpload({
       const result = await browserSupabase()
         .storage.from(APP.evidenceBucket)
         .upload(reg.path, file, { contentType: type, upsert: false, cacheControl: "0" });
-      if (result.error && !["409", "400"].includes(String(result.error.statusCode)))
-        throw new Error(result.error.message);
-      // If a previous attempt uploaded but its response was lost, confirm the same immutable object.
-      // SQL checks existence, exact size and MIME; a generic 400 is not treated as success on its own.
-      await execute("confirm_evidence", { run_id: data.run.id, id: reg.id });
+      // An earlier confirmation may have committed even if its response was lost.
+      // In that case Storage correctly denies another upload (including with 403).
+      // Only SQL confirmation of this actor's exact registered object proves success.
+      try {
+        await execute("confirm_evidence", { run_id: data.run.id, id: reg.id });
+      } catch (confirmationError) {
+        if (result.error) throw new Error(result.error.message);
+        throw confirmationError;
+      }
       setFile(null);
       setRegistration(null);
       dirtyChanged(`upload-${step.id}`, false);
@@ -398,6 +419,7 @@ function EvidenceUpload({
       setUploading(false);
     }
   };
+  if (disabled && !file) return null;
   return (
     <details className="step-details">
       <summary>Attach evidence</summary>
@@ -407,7 +429,7 @@ function EvidenceUpload({
           type="file"
           aria-label={`Evidence file for ${step.title}`}
           accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/csv,.csv"
-          disabled={uploading || busy}
+          disabled={disabled || uploading || busy}
           onChange={(e) => {
             setFile(e.target.files?.[0] || null);
             setRegistration(null);
@@ -418,7 +440,7 @@ function EvidenceUpload({
           <select
             id={`evidence-label-${step.id}`}
             value={label}
-            disabled={uploading || busy}
+            disabled={disabled || uploading || busy}
             onChange={(e) => setLabel(e.target.value)}
           >
             <option value="general">General</option>
@@ -431,7 +453,7 @@ function EvidenceUpload({
           <button
             id={`upload-evidence-${step.id}`}
             className="btn small"
-            disabled={!file || uploading || busy}
+            disabled={disabled || !file || uploading || busy}
             onClick={upload}
           >
             {uploading

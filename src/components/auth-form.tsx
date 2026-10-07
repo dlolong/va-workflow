@@ -1,5 +1,4 @@
 "use client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserSupabase } from "@/lib/supabase/browser";
 import { APP } from "@/lib/config";
@@ -12,7 +11,6 @@ export function AuthForm({
   nextPath?: string;
   reset?: boolean;
 }) {
-  const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -71,11 +69,11 @@ export function AuthForm({
               try {
                 const db = browserSupabase();
                 const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+                // A full same-origin navigation discards cached data from the previous auth session.
                 if (reset) {
                   const { error } = await db.auth.updateUser({ password });
                   if (error) throw error;
-                  router.replace("/dashboard");
-                  router.refresh();
+                  window.location.assign(new URL("/dashboard", window.location.origin));
                   return;
                 }
                 if (mode === "forgot") {
@@ -97,8 +95,7 @@ export function AuthForm({
                   });
                   if (error) throw error;
                   if (data.session) {
-                    router.replace(safeNext(nextPath));
-                    router.refresh();
+                    window.location.assign(new URL(safeNext(nextPath), window.location.origin));
                   } else
                     setMessage(
                       "Check your email to confirm your account, then sign in. Email confirmation follows your Supabase project settings.",
@@ -106,8 +103,7 @@ export function AuthForm({
                 } else {
                   const { error } = await db.auth.signInWithPassword({ email, password });
                   if (error) throw error;
-                  router.replace(safeNext(nextPath));
-                  router.refresh();
+                  window.location.assign(new URL(safeNext(nextPath), window.location.origin));
                 }
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Unable to authenticate.");

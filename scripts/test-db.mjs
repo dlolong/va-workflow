@@ -17,6 +17,7 @@ const actor = {
   owner: randomUUID(),
   va: randomUUID(),
   reviewer: randomUUID(),
+  manager: randomUUID(),
   outsider: randomUUID(),
 };
 const emails = Object.fromEntries(
@@ -29,7 +30,8 @@ async function test(name, fn) {
   console.log(`PASS ${total}: ${name}`);
 }
 async function identity(id, role = "authenticated") {
-  if (!["authenticated", "service_role"].includes(role)) throw new Error("Unexpected test role");
+  if (!["authenticated", "service_role", "anon"].includes(role))
+    throw new Error("Unexpected test role");
   await db.query("reset role");
   await db.query(
     "select set_config('request.jwt.claims',$1,true), set_config('request.jwt.claim.sub',$2,true), set_config('request.jwt.claim.role',$3,true)",
@@ -138,7 +140,10 @@ try {
   await test("request IDs cannot be reused with a different payload", async () => {
     const key = randomUUID();
     await command(null, "create_workspace", { name: "Original", timezone: "UTC" }, key);
-    await denied(() => command(null, "create_workspace", { name: "Changed", timezone: "UTC" }, key), /different payload/);
+    await denied(
+      () => command(null, "create_workspace", { name: "Changed", timezone: "UTC" }, key),
+      /different payload/,
+    );
   });
   for (const [name, content] of [
     ["numeric title", { ...flow([step("one")]), title: 123 }],
@@ -146,12 +151,25 @@ try {
     ["object instruction", flow([step("one", { instructions: {} })])],
     ["non-string option", flow([step("one", { kind: "select", options: [123] })])],
     ["oversized option", flow([step("one", { kind: "select", options: ["x".repeat(201)] })])],
-    ["credential-bearing resource", { ...flow([step("one")]), resources: [{ label: "Resource", url: "https://user:pass@example.test" }] }],
-    ["missing URL host", { ...flow([step("one")]), resources: [{ label: "Resource", url: "https://?query" }] }],
+    [
+      "credential-bearing resource",
+      {
+        ...flow([step("one")]),
+        resources: [{ label: "Resource", url: "https://user:pass@example.test" }],
+      },
+    ],
+    [
+      "missing URL host",
+      { ...flow([step("one")]), resources: [{ label: "Resource", url: "https://?query" }] },
+    ],
     ["missing steps", { ...flow([step("one")]), steps: null }],
     ["wrong boolean", flow([step("one", { required: "true" })])],
   ]) {
-    await test(`direct RPC rejects ${name}`, () => denied(() => command(workspace, "save_process", { content }), /title|text|string|option|resource|link|steps|rules|HTTP|content/i));
+    await test(`direct RPC rejects ${name}`, () =>
+      denied(
+        () => command(workspace, "save_process", { content }),
+        /title|text|string|option|resource|link|steps|rules|HTTP|content/i,
+      ));
   }
   const vaInvite = await command(workspace, "invite_member", { email: emails.va, role: "va" });
   const reviewInvite = await command(workspace, "invite_member", {
@@ -193,6 +211,98 @@ try {
       () => db.query("update public.processes set title='tampered' where id=$1", [processId]),
       /permission denied/i,
     ));
+  await identity(actor.owner);
+  const managerInvite = await command(workspace, "invite_member", {
+    email: emails.manager,
+    role: "manager",
+  });
+  await identity(actor.manager);
+  await command(null, "accept_invitation", { token: managerInvite.token });
+  await test("manager cannot grant another manager", () =>
+    denied(
+      () => command(workspace, "invite_member", { email: emails.outsider, role: "manager" }),
+      /cannot grant/,
+    ));
+  const oldInvite = await command(workspace, "invite_member", {
+    email: emails.outsider,
+    role: "va",
+  });
+  await identity(actor.owner);
+  await command(workspace, "change_role", { user_id: actor.manager, role: "va" });
+  await identity(actor.outsider);
+  await test("old invite loses authority after inviter demotion", () =>
+    denied(() => command(null, "accept_invitation", { token: oldInvite.token }), /authority/));
+  const tenantTables = [
+    "workspaces",
+    "memberships",
+    "processes",
+    "process_versions",
+    "schedules",
+    "runs",
+    "step_responses",
+    "evidence",
+    "approvals",
+    "issues",
+    "comments",
+    "training",
+    "invitations",
+    "audit_events",
+    "notifications",
+    "process_overview",
+  ];
+  await test("all tenant tables and invoker view hide unrelated workspace rows", async () => {
+    for (const table of tenantTables)
+      assert.equal(
+        (
+          await db.query(
+            `select * from public.${table} where ${table === "workspaces" ? "id" : "workspace_id"}=$1`,
+            [workspace],
+          )
+        ).rowCount,
+        0,
+        table,
+      );
+    assert.equal(
+      (await db.query("select * from public.profiles where id=$1", [actor.owner])).rowCount,
+      0,
+    );
+  });
+  await identity("", "anon");
+  await test("anonymous role has no business reads or command execution", async () => {
+    for (const table of tenantTables)
+      await denied(() => db.query(`select * from public.${table}`), /permission denied/);
+    await denied(() => command(workspace, "generate_schedules"), /permission denied/);
+  });
+  await identity(actor.owner);
+  await test("every application table denies direct mutation grants", async () => {
+    for (const table of tenantTables.filter((t) => t !== "process_overview")) {
+      const r = await db.query(
+        "select has_table_privilege('authenticated',$1,'INSERT,UPDATE,DELETE') as allowed",
+        ["public." + table],
+      );
+      assert.equal(r.rows[0].allowed, false, table);
+    }
+  });
+  await test("direct RPC rejects string boolean and oversized note", async () => {
+    await denied(
+      () =>
+        command(workspace, "update_workspace", { name: "QA", timezone: "UTC", archived: "false" }),
+      /boolean/,
+    );
+    await denied(
+      () => command(workspace, "change_role", { user_id: actor.manager, role: null }),
+      /text|required/,
+    );
+    await denied(
+      () =>
+        command(workspace, "remove_member", {
+          user_id: actor.manager,
+          replacement_id: actor.owner,
+          note: "x".repeat(5001),
+        }),
+      /5000/,
+    );
+  });
   await identity(actor.owner);
   await command(workspace, "publish_process", { id: processId });
   reviewRun = (
@@ -433,6 +543,143 @@ try {
       "attached",
     ));
   await identity(actor.owner);
+  const typedRun = (
+    await command(workspace, "create_run", {
+      content: flow([
+        step("zero", { kind: "number" }),
+        step("no", { kind: "yes_no" }),
+        step("text", { kind: "text" }),
+        step("na", { allow_na: true, evidence: "file" }),
+      ]),
+      assignee_id: actor.va,
+    })
+  ).id;
+  await identity(actor.va);
+  for (const [step_id, value, not_applicable, na_reason] of [
+    ["zero", 0, false, ""],
+    ["no", false, false, ""],
+    ["text", "   ", false, ""],
+    ["na", null, true, "Not applicable to synthetic fixture"],
+  ])
+    await command(workspace, "save_response", {
+      run_id: typedRun,
+      expected_version: (await run(typedRun)).version,
+      step_id,
+      value,
+      not_applicable,
+      na_reason,
+    });
+  await test("SQL rejects whitespace-only required text", () =>
+    denied(
+      async () =>
+        command(workspace, "submit_run", {
+          run_id: typedRun,
+          expected_version: (await run(typedRun)).version,
+        }),
+      /required step/,
+    ));
+  await command(workspace, "save_response", {
+    run_id: typedRun,
+    expected_version: (await run(typedRun)).version,
+    step_id: "text",
+    value: "Checked",
+    not_applicable: false,
+    na_reason: "",
+  });
+  await test("SQL accepts zero, false and explained permitted N/A", async () => {
+    await command(workspace, "submit_run", {
+      run_id: typedRun,
+      expected_version: (await run(typedRun)).version,
+    });
+    assert.equal((await run(typedRun)).status, "completed");
+  });
+  await identity(actor.owner);
+  await test("reassignment preserves deadline when omitted", async () => {
+    const due = "2027-01-02T09:00:00Z";
+    const id = (
+      await command(workspace, "create_run", {
+        content: flow([step("one")]),
+        assignee_id: actor.va,
+        due_at: due,
+      })
+    ).id;
+    await command(workspace, "reassign_run", {
+      run_id: id,
+      expected_version: 1,
+      assignee_id: actor.owner,
+      reviewer_id: null,
+      note: "QA handover",
+    });
+    assert.equal((await run(id)).due_at.toISOString(), "2027-01-02T09:00:00.000Z");
+  });
+  await test("forged invitation revocation does not manufacture audit event", () =>
+    denied(() => command(workspace, "revoke_invitation", { id: randomUUID() }), /not found/));
+  const issueRun = (
+    await command(workspace, "create_run", {
+      content: flow([step("check")]),
+      assignee_id: actor.va,
+    })
+  ).id;
+  await identity(actor.va);
+  await command(workspace, "save_response", {
+    run_id: issueRun,
+    expected_version: 1,
+    step_id: "check",
+    value: true,
+    not_applicable: false,
+    na_reason: "",
+  });
+  await command(workspace, "create_issue", {
+    run_id: issueRun,
+    title: "QA issue",
+    detail: "Synthetic problem",
+    recommendation: "Check again",
+    owner_id: actor.reviewer,
+    follow_up_at: "2026-10-01T10:00:00Z",
+    blocking: true,
+  });
+  await test("unresolved blocking issue prevents submission", () =>
+    denied(
+      () => command(workspace, "submit_run", { run_id: issueRun, expected_version: 2 }),
+      /blocking issues/,
+    ));
+  const issueId = (await db.query("select id from public.issues where run_id=$1", [issueRun]))
+    .rows[0].id;
+  await test("unassigned VA cannot resolve someone else issue", () =>
+    denied(
+      () =>
+        command(workspace, "resolve_issue", {
+          run_id: issueRun,
+          id: issueId,
+          resolution: "Attempt",
+        }),
+      /issue owner/,
+    ));
+  await identity(actor.reviewer);
+  await command(workspace, "resolve_issue", {
+    run_id: issueRun,
+    id: issueId,
+    resolution: "Verified synthetic result",
+  });
+  await identity(actor.va);
+  await command(workspace, "submit_run", { run_id: issueRun, expected_version: 2 });
+  await identity(actor.owner);
+  await test("archive blocks writes and restore reopens operations", async () => {
+    await command(workspace, "update_workspace", {
+      name: "QA workspace",
+      timezone: "Europe/Amsterdam",
+      archived: true,
+    });
+    await denied(
+      () => command(workspace, "save_process", { content: flow([step("one")]) }),
+      /archived/,
+    );
+    await command(workspace, "update_workspace", {
+      name: "QA workspace",
+      timezone: "Europe/Amsterdam",
+      archived: false,
+    });
+  });
   const schedule = (
     await command(workspace, "save_schedule", {
       process_id: processId,
@@ -463,6 +710,107 @@ try {
       before,
     );
   });
+  await test("pause, catch-up, process archive and changed reviewer requirement", async () => {
+    await command(workspace, "toggle_schedule", { id: schedule, active: false });
+    await db.query("reset role");
+    await db.query("update public.schedules set next_due_at=now()-interval '3 days' where id=$1", [
+      schedule,
+    ]);
+    await identity(actor.owner);
+    assert.equal((await command(workspace, "generate_schedules")).generated, 0);
+    await command(workspace, "toggle_schedule", { id: schedule, active: true });
+    const catchup = await command(workspace, "generate_schedules");
+    assert.ok(catchup.generated >= 3);
+    await command(workspace, "archive_process", { id: processId, archived: true });
+    assert.equal(
+      (await db.query("select active from public.schedules where id=$1", [schedule])).rows[0]
+        .active,
+      false,
+    );
+    await command(workspace, "archive_process", { id: processId, archived: false });
+    assert.equal(
+      (await db.query("select active from public.schedules where id=$1", [schedule])).rows[0]
+        .active,
+      false,
+    );
+    await command(workspace, "save_process", {
+      id: processId,
+      content: flow([step("review_changed")], true),
+    });
+    await command(workspace, "publish_process", { id: processId });
+    await command(workspace, "toggle_schedule", { id: schedule, active: true });
+    await db.query("reset role");
+    await db.query("update public.schedules set next_due_at=now()-interval '1 day' where id=$1", [
+      schedule,
+    ]);
+    await identity(actor.owner);
+    assert.equal(
+      (await command(workspace, "generate_schedules")).generated,
+      0,
+      "New review requirement must not produce reviewerless work",
+    );
+  });
+  await test("whole-workspace stats and local week boundaries ignore pagination", async () => {
+    await db.query("reset role");
+    await db.query(
+      "insert into public.runs(workspace_id,title,snapshot,assignee_id,status,due_at) select $1,'QA stats', $2::jsonb,$3,'waiting_on_client',now()-interval '1 day' from generate_series(1,55)",
+      [workspace, JSON.stringify(flow([step("stats")])), actor.va],
+    );
+    await identity(actor.owner);
+    const before = (await run(reviewRun)).due_at;
+    await command(workspace, "update_workspace", {
+      name: "QA workspace",
+      timezone: "Pacific/Kiritimati",
+      archived: false,
+    });
+    const stats = (await db.query("select public.workspace_stats($1) as stats", [workspace]))
+      .rows[0].stats;
+    const expected = (
+      await db.query(
+        "select count(*) filter(where status not in ('completed','cancelled'))::int as open,count(*) filter(where status not in ('completed','cancelled') and due_at<now())::int as overdue,date_trunc('week',now() at time zone 'Pacific/Kiritimati') at time zone 'Pacific/Kiritimati' as week from public.runs where workspace_id=$1",
+        [workspace],
+      )
+    ).rows[0];
+    assert.equal(stats.open, expected.open);
+    assert.ok(stats.open > 50);
+    assert.equal(stats.overdue, expected.overdue);
+    assert.equal(new Date(stats.week_start).toISOString(), expected.week.toISOString());
+    assert.equal((await run(reviewRun)).due_at.toISOString(), before.toISOString());
+  });
+  await command(workspace, "save_training", {
+    process_id: processId,
+    user_id: actor.va,
+    trainer_id: actor.owner,
+    stage: "owned",
+    note: "Synthetic published SOP sign-off",
+  });
+  await identity(actor.outsider);
+  await test("populated tenant tables and files remain isolated", async () => {
+    for (const table of tenantTables)
+      assert.equal(
+        (
+          await db.query(
+            `select * from public.${table} where ${table === "workspaces" ? "id" : "workspace_id"}=$1`,
+            [workspace],
+          )
+        ).rowCount,
+        0,
+        table,
+      );
+    await denied(
+      () =>
+        command(workspace, "save_response", {
+          run_id: reviewRun,
+          expected_version: 1,
+          step_id: "check",
+          value: true,
+          not_applicable: false,
+          na_reason: "",
+        }),
+      /access denied/,
+    );
+  });
+  await identity(actor.owner);
   await test("self-review cannot be introduced through reassignment", async () =>
     denied(
       async () =>
@@ -509,6 +857,142 @@ try {
       "select private.next_occurrence('daily','Europe/Amsterdam','17:00',1,1,'2026-10-24T15:00:00Z') as next",
     );
     assert.equal(r.rows[0].next.toISOString(), "2026-10-25T16:00:00.000Z");
+  });
+  for (const [freq, after, expected] of [
+    ["weekdays", "2026-10-09T17:00:00Z", "2026-10-12T17:00:00.000Z"],
+    ["weekly", "2026-10-06T17:00:00Z", "2026-10-12T17:00:00.000Z"],
+    ["daily", "2026-10-06T17:00:00Z", "2026-10-07T17:00:00.000Z"],
+  ]) {
+    await test(`${freq} recurrence computes next wall-clock deadline`, async () => {
+      assert.equal(
+        (
+          await db.query("select private.next_occurrence($1,'UTC','17:00',1,1,$2) as next", [
+            freq,
+            after,
+          ])
+        ).rows[0].next.toISOString(),
+        expected,
+      );
+    });
+  }
+  await test("security-definer functions have fixed search paths and private grants", async () => {
+    const functions = (
+      await db.query(
+        "select n.nspname,p.proname,p.oid,p.proconfig,p.prosecdef from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private')",
+      )
+    ).rows;
+    for (const f of functions) {
+      if (f.prosecdef)
+        assert.ok(
+          f.proconfig?.some((x) => x.startsWith("search_path=")),
+          f.proname,
+        );
+      if (f.nspname === "private")
+        for (const role of ["anon", "authenticated"])
+          assert.equal(
+            (
+              await db.query("select has_function_privilege($1,$2,'EXECUTE') as allowed", [
+                role,
+                f.oid,
+              ])
+            ).rows[0].allowed,
+            false,
+            f.proname,
+          );
+    }
+  });
+  await test("email leases enforce preferences, retry ownership and exhaustion", async () => {
+    await db.query("reset role");
+    // Restrict claims to this transaction's known notification, without touching persistent fixtures.
+    await db.query("update private.email_outbox set available_at=now()+interval '1 day'");
+    const n = (
+      await db.query(
+        "insert into public.notifications(workspace_id,recipient_id,title,dedupe_key) values($1,$2,'QA mail',$3) returning id",
+        [workspace, actor.owner, randomUUID()],
+      )
+    ).rows[0].id;
+    const job = (
+      await db.query("insert into private.email_outbox(notification_id) values($1) returning id", [
+        n,
+      ])
+    ).rows[0].id;
+    await db.query("update public.profiles set email_notifications=false where id=$1", [
+      actor.owner,
+    ]);
+    await identity("", "service_role");
+    assert.deepEqual(
+      (await db.query("select public.claim_notification_emails(50) as jobs")).rows[0].jobs,
+      [],
+    );
+    await db.query("reset role");
+    await db.query("update public.profiles set email_notifications=true where id=$1", [
+      actor.owner,
+    ]);
+    await db.query("update public.workspaces set archived_at=now() where id=$1", [workspace]);
+    await identity("", "service_role");
+    assert.deepEqual(
+      (await db.query("select public.claim_notification_emails(50) as jobs")).rows[0].jobs,
+      [],
+    );
+    await db.query("reset role");
+    await db.query("update public.workspaces set archived_at=null where id=$1", [workspace]);
+    await identity("", "service_role");
+    const first = (await db.query("select public.claim_notification_emails(50) as jobs")).rows[0]
+      .jobs;
+    assert.equal(first[0].attempts, 1);
+    await db.query("reset role");
+    await db.query(
+      "update private.email_outbox set locked_until=now()-interval '1 second' where id=$1",
+      [job],
+    );
+    await identity("", "service_role");
+    const second = (await db.query("select public.claim_notification_emails(50) as jobs")).rows[0]
+      .jobs;
+    assert.equal(second[0].attempts, 2);
+    await denied(
+      () => db.query("select public.finish_notification_email($1,true,null,1)", [job]),
+      /lease.*superseded/,
+    );
+    await db.query(
+      "select public.finish_notification_email($1,false,'Synthetic provider failure',2)",
+      [job],
+    );
+    await db.query("reset role");
+    const backoff = (
+      await db.query(
+        "select attempts,locked_until,available_at>now() as delayed from private.email_outbox where id=$1",
+        [job],
+      )
+    ).rows[0];
+    assert.equal(backoff.delayed, true);
+    assert.equal(backoff.locked_until, null);
+    await db.query(
+      "update private.email_outbox set attempts=5,locked_until=now()-interval '1 second' where id=$1",
+      [job],
+    );
+    await identity("", "service_role");
+    await db.query("select public.claim_notification_emails(50)");
+    await db.query("reset role");
+    assert.ok(
+      (await db.query("select failed_at from private.email_outbox where id=$1", [job])).rows[0]
+        .failed_at,
+    );
+    await db.query(
+      "update private.email_outbox set failed_at=null,attempts=3,locked_until=now()+interval '1 minute' where id=$1",
+      [job],
+    );
+    await identity("", "service_role");
+    await db.query("select public.finish_notification_email($1,true,null,3)", [job]);
+    await db.query("reset role");
+    const acknowledged = (
+      await db.query(
+        "select sent_at,locked_until,last_error from private.email_outbox where id=$1",
+        [job],
+      )
+    ).rows[0];
+    assert.ok(acknowledged.sent_at);
+    assert.equal(acknowledged.locked_until, null);
+    assert.equal(acknowledged.last_error, null);
   });
   console.log(
     `\n${total} database tests passed against local PostgreSQL. Storage API/browser/email delivery still need separate tests.`,

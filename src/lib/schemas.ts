@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeUrl } from "./domain.mjs";
 const uuid = z.string().uuid();
 const optionalId = z.union([uuid, z.literal(""), z.null()]).optional();
 const short = z.string().trim().min(1).max(200);
@@ -21,15 +22,7 @@ const timezone = z
 const url = z
   .string()
   .max(2000)
-  .refine((v) => {
-    if (!v) return true;
-    try {
-      const u = new URL(v);
-      return ["http:", "https:"].includes(u.protocol) && !u.username && !u.password;
-    } catch {
-      return false;
-    }
-  }, "Use an HTTP(S) link.");
+  .refine((v) => !v || safeUrl(v), "Use an HTTP(S) link with a host and without credentials.");
 export const stepSchema = z
   .strictObject({
     id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),

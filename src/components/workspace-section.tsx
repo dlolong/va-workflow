@@ -109,7 +109,8 @@ export function WorkspaceSection({
   const { execute, busy, error } = useCommand(data.workspace.id);
   const [message, setMessage] = useState("");
   const [inviteLink, setInviteLink] = useState("");
-  const manage = hasWritableRole(data.role) && !data.workspace.archived_at;
+  const managerRole = hasWritableRole(data.role);
+  const manage = managerRole && !data.workspace.archived_at;
   const canDraft = !data.workspace.archived_at && (manage || data.role === "va");
   const title = SECTIONS.find((s) => s[0] === section)?.[1] || "Workspace";
   const base = `/workspaces/${data.workspace.id}`;
@@ -881,7 +882,7 @@ export function WorkspaceSection({
               </table>
             </div>
           </section>
-          {manage && (
+          {managerRole && (
             <section className="panel">
               <div className="panel-heading">
                 <h2>Invitation history</h2>
@@ -913,7 +914,7 @@ export function WorkspaceSection({
                             <p>{formatTime(i.expires_at, data.me.timezone)}</p>
                           </td>
                           <td>
-                            {!i.accepted_at && !i.revoked_at && (
+                            {manage && !i.accepted_at && !i.revoked_at && (
                               <button
                                 id={`revoke-invite-${i.id}`}
                                 className="btn small"
@@ -1159,7 +1160,7 @@ export function WorkspaceSection({
               </Form>
             </section>
           )}
-          {manage && (
+          {managerRole && (
             <section className="panel pad stack">
               <h2>Automation health</h2>
               <div className="grid-3">

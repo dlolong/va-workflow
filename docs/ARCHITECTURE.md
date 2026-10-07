@@ -57,7 +57,7 @@ Register an evidence row → upload to that exact permitted object path → conf
 
 ## UI conventions
 
-Compact left navigation on desktop and select navigation on mobile; one primary page scroll plus dialogs; semantic form controls; stable IDs for critical actions; clear empty, saving, failure and readonly states. Step saves are explicit. The runner warns about unsaved changes on supported navigation paths. Browser-history/back behavior and device upload behavior need the supplied live QA checks.
+Categorized left navigation on desktop and a right-side menu button opening a centered modal on mobile; sticky header and centered form dialogs; one primary page scroll plus dialogs; semantic form controls; stable IDs for critical actions; clear empty, saving, failure and readonly states. Step saves are explicit. The runner warns about unsaved changes on supported navigation paths. Browser-history/back behavior and device upload behavior need the supplied live QA checks.
 
 ## Sources for implementation conventions
 
@@ -68,3 +68,11 @@ Compact left navigation on desktop and select navigation on mobile; one primary 
 - Resend API: https://resend.com/docs/api-reference/emails/send-email
 
 These references inform integration patterns, not a claim that the generated app has passed live platform verification.
+
+## Cleanup validation changes
+
+The seven migrations include three forward migrations added after execution against disposable PostgreSQL. Direct RPC workflow/scalar validation now matches the API limits, and email acknowledgements require the claimed attempt number. A stale lease cannot acknowledge a later attempt. The worker reports failed acknowledgements as HTTP 503 instead of reporting an unconfirmed batch as successful.
+
+Step components keep selected files through save/refresh and N/A changes. A refreshed remote answer does not replace a local dirty draft; a detected conflict requires comparison/reload. Quick-task retries retain the generated step identifier so their request payload stays idempotent. A successful create navigates once, avoiding an immediate refresh that could cancel it.
+
+Browser history protection uses cancelable Navigation API traversal events when available, plus beforeunload for document exits. It is not a guarantee for older browsers or forced termination; drafts remain memory-only. See the [Navigation API design](https://github.com/WICG/navigation-api/blob/main/README.md) for cancellation constraints. No sensitive offline persistence was introduced.

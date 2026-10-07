@@ -5,7 +5,8 @@ const walk = (dir) =>
   fs
     .readdirSync(dir, { withFileTypes: true })
     .flatMap((e) =>
-      e.isDirectory() && !["node_modules", ".next", ".git"].includes(e.name)
+      e.isDirectory() &&
+      !["node_modules", ".next", ".next-qa", ".git", "artifacts", "test-results"].includes(e.name)
         ? walk(path.join(dir, e.name))
         : e.isFile()
           ? [path.join(dir, e.name)]

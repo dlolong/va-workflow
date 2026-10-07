@@ -61,15 +61,34 @@ export function RunWorkspace({ data }: { data: RunBundle }) {
       if (
         target &&
         target.getAttribute("href") &&
+        target.getAttribute("target") !== "_blank" &&
+        !target.getAttribute("href")?.startsWith("#") &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
         !window.confirm("There are unsaved changes or an unfinished upload. Leave this page?")
       ) {
         event.preventDefault();
         event.stopPropagation();
       }
     };
+    // Modern browsers expose cancelable same-document history traversals.
+    // Cross-document exits remain covered by beforeunload; older browsers may
+    // not expose a cancelable traversal and must not be described as loss-proof.
+    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
+    const traverse = (event: Event) => {
+      if (
+        (event as Event & { navigationType?: string }).navigationType === "traverse" &&
+        event.cancelable &&
+        !window.confirm("There are unsaved changes or an unfinished upload. Leave this page?")
+      )
+        event.preventDefault();
+    };
+    navigation?.addEventListener("navigate", traverse);
     window.addEventListener("beforeunload", unload);
     document.addEventListener("click", click, true);
     return () => {
+      navigation?.removeEventListener("navigate", traverse);
       window.removeEventListener("beforeunload", unload);
       document.removeEventListener("click", click, true);
     };
@@ -262,6 +281,7 @@ export function RunWorkspace({ data }: { data: RunBundle }) {
                   saved={answer}
                   data={data}
                   editable={editable}
+                  refreshing={refreshing}
                   dirtyChanged={markDirty}
                   refresh={refresh}
                 />

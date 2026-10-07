@@ -7,11 +7,11 @@ Extract the archive and open the `va-workflow-v1` folder. Use Node.js **22.16+**
 ```bash
 nvm install 22
 nvm use 22
-npm install
+npm ci
 cp .env.example .env.local
 ```
 
-The archive intentionally has no `package-lock.json`: package downloads were unavailable during generation. Let the first successful `npm install` create it, validate it, then commit it. Subsequent reproducible installs should use `npm ci`.
+Use the checked-in npm-generated `package-lock.json` with `npm ci`. The invalid supplied lockfile was preserved in the cleanup baseline and replaced after reproducing its installation failure.
 
 Do not copy an unrelated application's `node_modules` or lockfile into this starter.
 
@@ -37,7 +37,7 @@ npm run check:env
 
 This validates variable shape, not connectivity or access permissions.
 
-## 3. Apply all four migrations
+## 3. Apply all migrations
 
 ### Option A: Supabase SQL Editor
 
@@ -47,6 +47,11 @@ In your new project, run each complete file, in this order:
 2. `supabase/migrations/202610060002_workflows.sql`
 3. `supabase/migrations/202610060003_jobs_reports.sql`
 4. `supabase/migrations/202610060004_views.sql`
+5. `supabase/migrations/202610070001_validation.sql`
+6. `supabase/migrations/202610070002_command_validation.sql`
+7. `supabase/migrations/202610070003_email_leases.sql`
+
+For an existing installation with the first four already applied, apply only the three forward migrations. Deploy the updated worker with migration 7: its email acknowledgement RPC now requires the claimed attempt number. Do not rewrite or rerun applied initial migrations.
 
 Each file contains its own transaction. Stop on the first error; do not continue as though it succeeded. These initial migrations are not designed to be rerun repeatedly over existing tables. Record which files were applied. Do not mix manually applied initial migrations with an un-reconciled CLI migration history.
 
@@ -78,13 +83,18 @@ The app supports the default PKCE callback route and a token-hash confirmation r
 **Confirm signup**
 
 ```html
-<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard">Confirm your email</a>
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/dashboard"
+  >Confirm your email</a
+>
 ```
 
 **Reset password**
 
 ```html
-<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=/reset-password">Reset your password</a>
+<a
+  href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=recovery&amp;next=/reset-password"
+  >Reset your password</a
+>
 ```
 
 Test links in the actual deployed environment. With the simple signup template above, a new invitee confirms their email and then reopens the workspace invitation link. The invitation is bound to the verified email address, not merely possession of the link.
@@ -211,15 +221,37 @@ Use separate staging and production projects. Confirm login, password recovery, 
 
 ## Troubleshooting
 
-| Symptom | Check |
-|---|---|
-| Setup screen instead of workspace | Required public variables are missing. Restart/redeploy after changes. |
-| Relation or RPC not found | All four migrations must be applied to the project named in `.env.local`. |
-| Save rejected for origin | Browser origin and `NEXT_PUBLIC_APP_URL` must match. |
-| Session/confirmation problems | Supabase URL allowlist, email template, expired link, and project auth email delivery. |
-| Invite rejected | Sign in with the exact invited verified email; check expiry, revocation and inviter authority. |
-| Reviewer cannot be selected | Invite a separate active owner, manager or client. A VA role is not a reviewer role. |
-| No recurring runs | Publish the process, assign active users, check timezone/lead time, then configure cron or generate manually. |
-| Evidence never attaches | Check private bucket policies, allowed MIME/size, browser upload error and exact object metadata. Do not bypass confirmation. |
-| Draft changes do not appear in an old run | Intended: runs retain the published snapshot with which they started. |
-| Stale-save warning | Reload to inspect the newer saved state; do not force an overwrite. |
+| Symptom                                   | Check                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Setup screen instead of workspace         | Required public variables are missing. Restart/redeploy after changes.                                                        |
+| Relation or RPC not found                 | All migrations must be applied to the project named in `.env.local`.                                                          |
+| Save rejected for origin                  | Browser origin and `NEXT_PUBLIC_APP_URL` must match.                                                                          |
+| Session/confirmation problems             | Supabase URL allowlist, email template, expired link, and project auth email delivery.                                        |
+| Invite rejected                           | Sign in with the exact invited verified email; check expiry, revocation and inviter authority.                                |
+| Reviewer cannot be selected               | Invite a separate active owner, manager or client. A VA role is not a reviewer role.                                          |
+| No recurring runs                         | Publish the process, assign active users, check timezone/lead time, then configure cron or generate manually.                 |
+| Evidence never attaches                   | Check private bucket policies, allowed MIME/size, browser upload error and exact object metadata. Do not bypass confirmation. |
+| Draft changes do not appear in an old run | Intended: runs retain the published snapshot with which they started.                                                         |
+| Stale-save warning                        | Reload to inspect the newer saved state; do not force an overwrite.                                                           |
+
+## Reproducible local integration/browser QA
+
+Use a dedicated disposable local Supabase stack. Install the CLI (`npx supabase --version`) and start it with this project's config. If another project uses ports 54320–54324, copy `supabase/` into a temporary workdir, choose a unique project ID and unused ports, and set `QA_SUPABASE_WORKDIR` to that directory. Never reuse another product's database. Include **all seven** migrations in the copy.
+
+The local runner reads `supabase status -o json` without printing credentials, overrides the hosted `.env.local` settings in memory, disables outgoing notification email, and redacts auth/invitation links from server logs. Use Node 22.16+ and the same workdir in both terminals:
+
+```bash
+# Terminal 1 (default QA origin is http://localhost:3107)
+node scripts/local-qa.mjs npm run dev -- --port 3107
+# Terminal 2
+node scripts/local-qa.mjs npm run test:db
+node scripts/local-qa.mjs npm run test:services
+npx playwright install chromium
+node scripts/local-qa.mjs npm run test:e2e
+```
+
+`test:db` rolls back its fixtures. The service and local-browser suites generate synthetic users/workspaces and leave them in the disposable stack. They refuse hosted Supabase URLs; `test:services` also requires the runner's explicit `QA_DISPOSABLE=va-relay` flag. Browser tests exercise separate real sessions; the older credential-based smoke case still skips without `E2E_EMAIL`/`E2E_PASSWORD`.
+
+QA uses `.next-qa` through `NEXT_DIST_DIR` so it can coexist with a normal dev server. Do not run builds and TypeScript checks concurrently: Next regenerates files consumed by TypeScript. Playwright output is under `test-results/browser`; keep command logs/screenshots under `artifacts/qa` so Playwright does not erase them. Traces are disabled because auth/invitation requests contain secrets.
+
+The recovery callback test uses a real token generated by the **local** Auth admin fixture. It verifies the app's token exchange and password change, not production SMTP delivery or every email-template variant. See `docs/QA_REPORT.md` for the executed coverage and limitations.

@@ -17,6 +17,16 @@ const config: NextConfig = {
           },
         ],
       },
+      {
+        source: "/VA_Relay_User_Tutorial.pdf",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+          },
+        ],
+      },
     ];
   },
 };

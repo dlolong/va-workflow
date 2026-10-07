@@ -32,6 +32,7 @@ export function TaskForm({
   const { execute, busy, error } = useCommand(data.workspace.id);
   const router = useRouter();
   const [selected, setSelected] = useState(processId);
+  const [quickStepId] = useState(() => crypto.randomUUID());
   const [assignee, setAssignee] = useState(data.me.id);
   const process = data.processes.find((p) => p.id === selected);
   return (
@@ -50,6 +51,7 @@ export function TaskForm({
           steps: [
             {
               ...blankStep("Complete the requested outcome"),
+              id: quickStepId,
               evidence: checked(f, "evidence_required") ? "file" : "none",
             },
           ],
@@ -67,7 +69,6 @@ export function TaskForm({
         });
         close();
         router.push(`/workspaces/${data.workspace.id}/runs/${result.id}`);
-        router.refresh();
       }}
     >
       <Field label="Start from">

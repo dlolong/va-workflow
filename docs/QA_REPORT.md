@@ -1,22 +1,120 @@
-# Scoped QA — October 7, 2026
+# VA Relay cleanup QA — October 7, 2026
 
-Scope: resolve the Turbopack startup failure by selecting Webpack in the development and production build scripts. Setup instructions updated. No application or database behavior changed.
+## Verdict
 
-Environment: macOS ARM64, Node 23.2.0, Next.js 16.3.8. Installed Next.js documentation confirms `--webpack` supports WASM bindings. The native SWC library fails to load because its declared segment extends beyond the file length; WASM fallback remains active.
+**Validated for a controlled pilot with synthetic data; not yet approved for a live-client production rollout.** The application has been exercised against a dedicated local Supabase stack using real PostgreSQL, Auth, Storage, and Chromium sessions. Deployment configuration, real email delivery, hosted scheduling, and a complete database-plus-file restore remain release requirements.
 
-| Check | Result |
-| --- | --- |
-| Git status | Exit 128: this directory is not a Git repository; baseline diff unavailable |
-| Development startup | Initial sandbox attempt exited 1 (port binding denied); permitted retry reached Ready with Webpack on port 3107, then stopped intentionally (exit 0) |
-| `npm run build` | Exit 0; production compilation, TypeScript and page generation completed |
-| `npm test` | Exit 0; 59 passed, 0 failed/skipped |
-| `npm run typecheck` | Exit 0 |
-| `npm run check:syntax` | Exit 0; 44 files, no syntax errors |
-| `npm run lint` | Exit 2; installed dependency tree lacks `acorn` |
-| `npm run check:env` | Exit 0; required variable shapes valid, connectivity not tested |
+The existing Next.js App Router / TypeScript / Supabase architecture and compact UI were retained. No production database was reset, seeded, or used for integration testing. `.env.local` was not edited. No service-role client was added to ordinary application operations.
 
-The Next.js dev command appended its standard documentation guidance block to AGENTS.md, preserving existing instructions.
+## Environment and reproducibility
 
-Remaining limitations: dependency reinstall and native binding repair were not performed in this scoped bundler fix. Optional automation and notification email configuration is incomplete. Database, real Storage API, authenticated browser flows and external delivery were not tested in this change; a disposable test environment remains necessary for those checks. No database data was modified.
+- Node **22.23.3**, npm **10.9.9** for installation and final checks. The shell initially exposed Node 23.2.0; subsequent commands explicitly selected Node 22.
+- Next.js / eslint-config-next **16.3.8**, React / React DOM **19.3.0**, Supabase SSR **0.8.0**, Supabase JS **2.117.2**.
+- TypeScript **5.9.3**, ESLint **9.39.5**, Playwright **1.63.0**, Chromium headless shell **153.0.8010.12**, Luxon **3.7.2**, Zod **4.6.5**, Tailwind **4.3.3**, pg **8.23.1**, Prettier **3.9.9**.
+- Supabase CLI **2.120.0**; dedicated project `va-relay-local-qa`, PostgreSQL image `17.11.0.004`, API port **57321**, database port **57322**, local mail port **57324**. The app ran at `http://localhost:3107` with `.next-qa` as its isolated output directory.
+- Docker used the existing Colima VM, but VA Relay received its own containers, database, volumes, project ID and ports. Other projects were not reset or modified.
+- This extracted folder has **no Git repository**: `git status --short` exited **128**. A source snapshot excluding `.env.local`, dependencies and build output was preserved at `/private/tmp/va-relay-qa-baseline` before changes. Review used that snapshot; no commit was created. All four original migration files remain byte-for-byte unchanged.
+- Installed Next.js documentation for cookies, route handlers, Proxy and streamed not-found responses was read. A streamed denied page can legitimately return HTTP 200; isolation tests assert its denied UI and absence of task content, as well as API authorization failures.
 
-Verdict: Webpack startup and production build verified; full pilot readiness is not established. Resolve the dependency installation issue before treating lint as verified.
+`START_HERE.md` documents `scripts/local-qa.mjs`. The runner reads local CLI settings in memory, refuses remote API/database URLs, preserves `.env.local`, disables notification email, and redacts invitation/auth-link tokens from output. The service and local browser suites generate synthetic disposable fixtures. The SQL suite rolls back its fixtures.
+
+## Executed checks
+
+Logs are under `artifacts/qa/`; Playwright's disposable output is under `test-results/browser/`. Logs and screenshots are intentionally ignored by Git.
+
+| Command / check                                                            | Exit | Observed result                                                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------- | ---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm ci` with repaired npm-generated lockfile                              |    0 | Clean installation: 392 packages installed; no force/legacy-peer-deps flags.                                                                                                                                                                                      |
+| `npm run check:env`                                                        |    0 | Required public settings have valid shape. Does not prove hosted connectivity. Worker/email configuration is incomplete.                                                                                                                                          |
+| `npm test`                                                                 |    0 | **68 passed**, no failed/skipped tests: pure rules, static guardrails, malformed/interrupted command responses.                                                                                                                                                   |
+| `npm run check:syntax`                                                     |    0 | **48** source/test TypeScript files parsed; generated directories excluded. This is separate from semantic typechecking.                                                                                                                                          |
+| `npm run typecheck`                                                        |    0 | Semantic TypeScript check passed after production build generated route types.                                                                                                                                                                                    |
+| `npm run lint`                                                             |    0 | No errors or warnings; no wholesale rule suppression.                                                                                                                                                                                                             |
+| `npm run build` through the local QA runner                                |    0 | Complete production Webpack build, route generation and build traces passed.                                                                                                                                                                                      |
+| `supabase db reset --local --workdir /private/tmp/va-relay-local-qa --yes` |    0 | All **seven final migrations** applied from scratch to the disposable stack.                                                                                                                                                                                      |
+| `npm run test:db` through the local runner                                 |    0 | **66** rollback-only database integration checks passed on the final schema.                                                                                                                                                                                      |
+| `npm run test:services` through the local runner                           |    0 | **18** real Auth/Storage/concurrency checks passed. These are not storage-metadata substitutes.                                                                                                                                                                   |
+| `npx playwright install chromium`                                          |    0 | Actual Chromium browser installed.                                                                                                                                                                                                                                |
+| Development-server browser suite                                           |    0 | **20 passed, 2 skipped** across desktop and mobile. The two legacy credential-based smoke cases explicitly skipped because `E2E_EMAIL`/`E2E_PASSWORD` were absent. Separate generated-account tests exercised authenticated workflows.                            |
+| Production-server browser suite                                            |    0 | **20 passed, 2 skipped** across desktop/mobile on the final production build, including reload/forward/back cancellation and archived history. The same two optional legacy credential cases skipped.                                                             |
+| `npm audit --omit=dev --json`                                              |    0 | **0 runtime dependency vulnerabilities** reported.                                                                                                                                                                                                                |
+| `npm audit --json`                                                         |    1 | **5 high** development dependency findings from one underlying `braces` advisory; see below.                                                                                                                                                                      |
+| Isolated PostgreSQL dump/restore                                           |    0 | Restore into a new local database succeeded; all 66 SQL checks passed against the final restored schema. The final dump used `pg_dump -Fc`; `pg_restore --exit-on-error` restored into the new local `va_relay_restore_final` database. See recovery scope below. |
+| Critical JSX ID comparison                                                 |    0 | No removed or added critical JSX ID expressions compared with the preserved source baseline.                                                                                                                                                                      |
+| Artifact secret-pattern scan                                               |    0 | No JWT, secret-key, invitation-token or auth-token patterns found in checked reports/logs. This is a targeted scan, not a general secret-audit certification.                                                                                                     |
+
+Earlier failures were investigated, not hidden:
+
+- The supplied lockfile had versionless package entries. `npm ci` failed with **Invalid Version** (exit 1); initial sandbox network access also failed. A temporary copy of the unchanged package manifest was resolved by npm, the genuine lockfile was copied back, and clean installation subsequently passed. Direct dependency pins were retained.
+- Baseline unit/static tests: **59 passed**. Baseline lint exited **2** because `acorn` was missing, then exposed a dialog ref rule violation and navigation/default-export warnings after installation was repaired.
+- An initial TypeScript run overlapped a build and failed on disappearing generated files. Subsequent checks ran after build/type generation and passed; this was a verification-order error, not suppressed type errors.
+- The malformed direct-RPC regression failed because numeric workflow titles were accepted. It passed after forward validation hardening.
+- Browser regressions exposed cancelled create navigation, lost upload selection, failed retry after committed confirmation, and mobile invitation-table overflow. Other browser test corrections addressed hydration timing, actual success wording, and Next.js streamed not-found semantics.
+- The expanded production browser run exposed an invalid reload-test assumption: cancelling a reload needs browser user activation and explicit dialog synchronization. The test now clicks the field and waits for the dialog; desktop/mobile reload and forward/back cancellation pass. That initial suite was stopped (exit 130) before a clean final rerun.
+- One development compiler run reported an empty manifest. Its isolated cache was moved aside and rebuilt; the user's normal dev server was not stopped.
+- Initial restore attempts failed on cleanup of absent schemas, insufficient ownership privileges, and removing the default public schema. The successful empty-database restore retained `public` and used the local infrastructure role to preserve ownership/grants. These attempts touched disposable restore databases only.
+
+## Fixes and source cleanup
+
+- Formatted source with the configured Prettier settings. Separated the SOP editor (`process-form.tsx`), SOP reader (`workflow-read.tsx`), and run-step/evidence controls (`run-step.tsx`) without changing critical action IDs.
+- Repaired modal lifecycle and focus return. Successful create/accept actions navigate once instead of immediately cancelling navigation with a refresh. Authentication uses a full same-origin navigation to discard session-specific client cache.
+- Quick-task retries retain their generated step ID, keeping the payload stable after an uncertain response. Command responses reject nulls, arrays and malformed/interrupted JSON instead of treating HTTP 200 as a confirmed save.
+- Selected files survive answer saves, refreshes and N/A toggles. Answer saves wait for the refreshed optimistic version. A remote response change preserves a local dirty draft and blocks silent overwrite until the user compares/reloads.
+- An upload retry always requires SQL confirmation of the exact registered object. A previous confirmation can have committed even when its HTTP response was lost; Storage's subsequent 403 overwrite denial is not by itself proof of failure or success. Reconfirmation neither duplicates attachment audit events nor skips request-ID reservation.
+- Archived workspaces retain read-only invitation history and automation health while hiding write controls that their SQL boundary will reject. Wide mobile tables scroll internally instead of widening the page and obscuring actions.
+- Added cancelable browser-history traversal protection alongside existing link/dropdown/sign-out/beforeunload warnings. Drafts remain in memory only; forced termination and browsers without cancelable traversal support are not loss-proof. [Navigation API cancellation constraints](https://github.com/WICG/navigation-api/blob/main/README.md).
+- Added three **forward migrations**: bounded/typed workflow validation and credential-free HTTP(S) links; direct command scalar validation, honest invite/evidence audit behavior and preservation of omitted reassignment deadlines; attempt-bound email acknowledgements. The old three-argument email acknowledgement is no longer executable by `service_role`; deploy the updated worker with migration 7.
+- Worker acknowledgement failure now returns an explicit HTTP 503 instead of silently swallowing the failure. No provider delivery is claimed from SQL lease tests.
+
+## Verified behavior
+
+Database checks cover owner, manager, client reviewer, VA, unrelated client, anonymous and removed identities; all tenant tables and the invoker view; profile isolation; absence of direct authenticated mutation grants; fixed security-definer search paths/private execution grants; draft/publication roles; immutable run snapshots; malformed direct-RPC workflow/scalar inputs; self-review and stale versions; idempotency/payload reuse; approval gates; final correction/resubmission; typed zero/false/whitespace/N/A; pending evidence; blocking issues, resolution ownership and follow-up; archive/restore; deadline-preserving handover; offboarding and inviter authority; daily/weekdays/weekly/monthly/DST recurrence; paused catch-up and changed reviewer requirements; workspace-wide counts and timezone week boundaries; email preferences, archived workspaces, exhausted/expired leases, backoff and stale/successful acknowledgements.
+
+Service checks use real authenticated API sessions and actual uploaded bytes. They cover MIME/size rejection, unauthorized uploads/downloads, fabricated confirmation, immutable overwrite rejection, duplicate retry, before/after evidence, byte-for-byte download, concurrent optimistic saves, simultaneous identical requests, concurrent scheduler invocations and overlapping worker transactions. Removed users cannot obtain new downloads or signed URLs. An already-issued signed URL remained usable immediately after removal: the app issues a **60-second TTL**, and already-downloaded bytes cannot be recalled. Expiry after the full TTL was not separately timed.
+
+Browser checks use desktop and iPhone-sized Chromium viewports, with separate owner/VA/reviewer/unrelated contexts. Covered flows include signup/login, token-hash recovery/password change, workspace creation, draft/publication, quick tasks and reload, recurring generation, invitations/acceptance/revocation, permission before action, typed answers, actual file attachment and interrupted-confirmation retry, final review/correction/resubmission, issues/waiting/follow-up, comments, notifications, training sign-off, reassignment, CSV/JSON downloads, archived controls, modal Escape/focus return, horizontal overflow, network loss, navigation warnings and simultaneous-tab draft preservation.
+
+The recovery test requests a reset and uses a real local Auth-generated token to exercise the callback; it is **not** proof of hosted SMTP delivery, every email-template variant, or cross-device PKCE behavior. Fault injection drops a response only after forwarding the real command to the real database; it does not mock the save path as successful.
+
+Screenshots of real synthetic workflows:
+
+- `artifacts/qa/desktop-completed.png`
+- `artifacts/qa/mobile-completed.png`
+- `artifacts/qa/desktop-reviewed.png`
+- `artifacts/qa/mobile-reviewed.png`
+
+## Dependency finding
+
+`npm audit` reports `braces → micromatch → fast-glob → @next/eslint-plugin-next → eslint-config-next` as five high development findings from [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). The advisory lists no patched release. npm proposes a major downgrade of the Next lint configuration; that would not be an appropriate blind compatibility fix. No force fix or vulnerability suppression was applied. Runtime-only audit passes. Keep untrusted glob patterns out of the build/lint toolchain and reassess when upstream publishes a compatible fix. npm also warns that ESLint 9 is no longer supported; its pinned compatibility chain was retained rather than upgraded without validation.
+
+## Remaining release setup and coverage limits
+
+1. Apply only the three new forward migrations to an existing installation with migrations 1–4 already applied. Apply all seven to a new dedicated project. No hosted migration was applied in this cleanup.
+2. Configure and test the actual deployment origin, HTTPS, Supabase redirect allowlist, signup confirmation/password-recovery templates and SMTP delivery. Repeat deployed two-account approval and Storage checks. Local signup confirmation is disabled by the supplied local config; enabled-confirmation signup/email delivery is not certified here.
+3. Optional unattended automation requires the server-only worker key, a strong `CRON_SECRET`, and a host scheduler. SQL worker concurrency and unauthorized HTTP calls were tested; an external scheduler invoking the deployed endpoint was not.
+4. Real notification email requires `RESEND_API_KEY`, a verified `EMAIL_FROM` domain and an actual delivered-message check. Those settings were absent. Lease/acknowledgement logic passed without sending mail. Real provider failures/acknowledgement behavior remain a staging integration check.
+5. The dump/restore rehearsal recovered a **database**, including auth records, metadata, RLS and grants. It did not restore object bytes into a separate Storage service or exercise hosted backups/PITR, separate-project auth login, deployment-specific RPO/RTO, retention or operator access. Complete the full `OPERATIONS.md` rehearsal before relying on recovery of live client files.
+6. Chromium desktop/mobile emulation is not a physical iPhone/Safari/Firefox certification. Browsers that do not expose cancelable history traversal, forced app termination and fully offline operation remain limitations. No offline sync or sensitive local persistence was added.
+7. Export formula defense is unit tested, and actual CSV/JSON downloads are browser tested. The 100,000-record rejection path was reviewed but not exercised with that volume. Application export still excludes attachment bytes and is not a transaction-consistent backup. Load/abuse/rate-limit and malware-scanning coverage is not implied.
+
+No claim of production security certification, external-marketplace action verification, regulatory compliance or unrestricted scale is made.
+
+## UI refinement — October 7, 2026
+
+Preserved the existing working-tree edits and application flows. Updated shared styling to a calm teal/slate palette, grouped desktop/mobile navigation into Daily work, Processes & people, and Workspace insights, replaced the mobile select with a right-aligned menu icon and native modal navigation, and kept the header visible while scrolling. Native form dialogs now explicitly center in the viewport; tall dialogs scroll within viewport bounds. Existing desktop navigation IDs remain intact; `mobile-navigation` now identifies the popup instead of a select. Escape, focus return, active-page indication and unsaved-work cancellation remain supported.
+
+Verification for this UI change (separate from the earlier full QA run):
+
+- `npm ls --depth=0`, configuration shape check, 68 unit/static tests, syntax check (48 files), TypeScript, ESLint and production build: exit **0**. Dependencies were already installed; no dependency versions or lockfile changed. Initial shell checks used Node 23.2.0; browser tests and final lint/typecheck used Node 22.23.3.
+- Targeted real Chromium tests against the existing disposable local Supabase project: **4 passed, 0 skipped**, exit **0**, across desktop/mobile. Verified navigation categories and links, popup navigation and Escape/focus return, horizontal overflow, form-dialog center coordinates, sticky-header position after scrolling, and cancelled unsaved-answer navigation.
+- Initial sandbox server/browser launches failed (exit **1**) due to OS permissions; reruns outside the sandbox passed. CLI discovery also failed on registry DNS; the existing local QA runner was used after checking that its API/database endpoints were loopback addresses.
+- An intermediate lint run included the temporary alternate build directory and failed (exit **1**) on generated output. Moved that build artifact outside the repository and removed only its newly generated TypeScript include entries; final source checks passed without rule suppression.
+- No database schema, authorization, production data or `.env.local` changes. Full database/Storage suites and hosted email checks were not repeated for this presentation-only change. Earlier release limitations still apply; these UI checks are not production certification.
+
+## Tutorial page — October 7, 2026
+
+Added `/tutorial` within the authenticated app shell, with desktop/mobile Tutorial navigation, a titled PDF iframe, and open/download links for browsers without inline PDF support. The supplied document is copied byte-for-byte to `public/VA_Relay_User_Tutorial.pdf`; the original was preserved. This tutorial asset is publicly accessible. Only its response permits same-origin framing; other pages retain their existing frame restrictions.
+
+Scoped verification: 68 unit/static tests passed (exit 0); lint, syntax (49 files), configuration-shape check, dependency inspection, production build and final typecheck exited 0. The initial typecheck exited 2 because generated `.next-qa` files were missing; the subsequent check after building passed without source/config suppression. Dependencies were already installed and were not changed. PDF byte comparison and diff whitespace check exited 0.
+
+Live checks remain incomplete: the first server launch exited 1 because port 3107 was occupied; a launch on 3198 reported ready, but the separate HTTP probe could not connect (curl exit 7). Authenticated browser rendering and device-native PDF rendering were not verified in this change. Database/Storage integration suites were not repeated for this static tutorial addition. Earlier release limitations remain applicable.

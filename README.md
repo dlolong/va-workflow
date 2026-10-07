@@ -4,28 +4,28 @@ A client-workspace app for delegated operations: SOP → checklist run → evide
 
 **Start with [START_HERE.md](START_HERE.md).** The product name is a working name; change `src/lib/config.ts` to rename it.
 
-This is source code with implemented application flows, not a hosted service or a production certification. The generation environment could run dependency-free tests and source syntax checks, but could not download npm dependencies, start PostgreSQL, or run a Next.js browser session. Read [the delivery QA report](docs/DELIVERY_QA.md) before using real client data.
+This is source code with implemented application flows, not a hosted service or a production certification. Cleanup validation results and remaining pilot requirements are recorded in [the QA report](docs/QA_REPORT.md). The [original delivery report](docs/DELIVERY_QA.md) remains a historical baseline.
 
 ## Included
 
-| Area | Implementation |
-|---|---|
-| Accounts | Supabase signup, login, confirmation callbacks, password reset, sign-out, profile timezone and email preferences |
-| Clients and teams | Explicitly scoped workspaces; owner, manager, client and VA roles; expiring email-bound invite links; reassignment/offboarding |
-| SOPs | Eight step input types, instructions, authority boundaries, links, paste-a-list, templates, duplication, VA-authored drafts, manager publication, immutable versions |
-| Execution | One-off requests and published-process runs, source/reference, required responses, permitted N/A with reasons, explicit save/resume, optimistic locking |
-| Recurrence | Daily, weekdays, weekly and monthly; named timezones, ahead-of-deadline generation, pause/resume, unique occurrences |
-| Evidence | Private 10 MB uploads, before/after labels, pending vs attached state, retryable uploads, short-lived downloads |
-| Decisions | Pre-action permission gates; separate final review; request changes and resubmit; no self-review |
-| Exceptions | Blocking/nonblocking issues, recommended next action, responsible person, follow-up dates, waiting status separate from deadline status |
-| Operations | My Day, deadline register, attention queue, comments, in-app notifications, activity history, basic handovers/sign-off |
-| Reporting | Whole-workspace weekly counts, copyable summary, paginated work list, CSV and JSON exports |
-| Automation | Authenticated cron endpoint, catch-up scheduling, deadline/follow-up reminders, optional Resend notification email with retries |
-| QA | Dependency-free rules/static tests, real local PostgreSQL test harness, Playwright smoke flows, configuration checker, developer-only Codex QA instructions |
+| Area              | Implementation                                                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts          | Supabase signup, login, confirmation callbacks, password reset, sign-out, profile timezone and email preferences                                                     |
+| Clients and teams | Explicitly scoped workspaces; owner, manager, client and VA roles; expiring email-bound invite links; reassignment/offboarding                                       |
+| SOPs              | Eight step input types, instructions, authority boundaries, links, paste-a-list, templates, duplication, VA-authored drafts, manager publication, immutable versions |
+| Execution         | One-off requests and published-process runs, source/reference, required responses, permitted N/A with reasons, explicit save/resume, optimistic locking              |
+| Recurrence        | Daily, weekdays, weekly and monthly; named timezones, ahead-of-deadline generation, pause/resume, unique occurrences                                                 |
+| Evidence          | Private 10 MB uploads, before/after labels, pending vs attached state, retryable uploads, short-lived downloads                                                      |
+| Decisions         | Pre-action permission gates; separate final review; request changes and resubmit; no self-review                                                                     |
+| Exceptions        | Blocking/nonblocking issues, recommended next action, responsible person, follow-up dates, waiting status separate from deadline status                              |
+| Operations        | My Day, deadline register, attention queue, comments, in-app notifications, activity history, basic handovers/sign-off                                               |
+| Reporting         | Whole-workspace weekly counts, copyable summary, paginated work list, CSV and JSON exports                                                                           |
+| Automation        | Authenticated cron endpoint, catch-up scheduling, deadline/follow-up reminders, optional Resend notification email with retries                                      |
+| QA                | Dependency-free rules/static tests, real local PostgreSQL test harness, Playwright smoke flows, configuration checker, developer-only Codex QA instructions          |
 
 ## Stack
 
-Next.js App Router / React / TypeScript, Tailwind CSS with a compact custom UI, Supabase Auth/Postgres/Storage, Zod and Luxon. Node.js 22.16 or newer is required. Version choices are recorded in `package.json`; no lockfile is fabricated. Run `npm install` in a connected environment and commit the resulting lockfile after validation.
+Next.js App Router / React / TypeScript, Tailwind CSS with a compact custom UI, Supabase Auth/Postgres/Storage, Zod and Luxon. Node.js 22.16 or newer is required. Version choices are recorded in `package.json`; the checked-in lockfile was generated by npm and validated with `npm ci`.
 
 Normal browser/server operations use the authenticated user's session. A service-role key is **not** required for manual core workflows and is used only by the optional automation worker.
 
@@ -34,12 +34,12 @@ Normal browser/server operations use the authenticated user's session. A service
 ```bash
 cp .env.example .env.local
 # Fill in your Supabase project URL, public key and app URL.
-npm install
+npm ci
 npm run check:env
 npm run dev
 ```
 
-Apply the four SQL migrations to a **new dedicated Supabase project** before opening a workspace. See the setup guide for the exact order, authentication settings, optional cron/email, and the first end-to-end workflow.
+Apply all SQL migrations in filename order to a **new dedicated Supabase project** before opening a workspace. See the setup guide for the exact order, authentication settings, optional cron/email, and the first end-to-end workflow.
 
 ```bash
 npm test                 # Pure rules + source guardrails, no external services
@@ -48,7 +48,8 @@ npm run typecheck
 npm run lint
 npm run build
 npm run test:db          # Disposable LOCAL Supabase only
-npm run test:e2e         # Browser tests; authenticated case needs test credentials
+npm run test:e2e         # Browser tests; see local QA setup below
+npm run test:services    # Real local Auth/Storage/concurrency; explicit disposable opt-in
 ```
 
 ## Project map

@@ -34,7 +34,6 @@ export function WorkspaceList({ workspaces }: { workspaces: Workspace[] }) {
                 });
                 close();
                 router.push(`/workspaces/${result.id}/today`);
-                router.refresh();
               }}
             >
               <Field label="Client / business name">

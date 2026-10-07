@@ -27,7 +27,8 @@ async function run(request: Request) {
     const { data, error } = await db.rpc("run_automation");
     if (error) throw error;
     let sent = 0,
-      failed = 0;
+      failed = 0,
+      acknowledgementFailures = 0;
     const apiKey = process.env.RESEND_API_KEY;
     const from = process.env.EMAIL_FROM;
     if (apiKey && from && process.env.NEXT_PUBLIC_APP_URL) {
@@ -35,6 +36,8 @@ async function run(request: Request) {
       if (jobs.error) throw jobs.error;
       await Promise.all(
         ((jobs.data || []) as MailJob[]).map(async (job) => {
+          let successful = false;
+          let errorMessage: string | null = null;
           try {
             const path = job.run_id
               ? `/workspaces/${job.workspace_id}/runs/${job.run_id}`
@@ -56,24 +59,24 @@ async function run(request: Request) {
               signal: AbortSignal.timeout(15000),
             });
             if (!response.ok) throw new Error(`Provider HTTP ${response.status}`);
-            const result = await db.rpc("finish_notification_email", {
-              job_id: job.id,
-              successful: true,
-              error_message: null,
-            });
-            if (result.error) throw result.error;
-            sent++;
+            successful = true;
           } catch (e) {
             failed++;
-            await db.rpc("finish_notification_email", {
-              job_id: job.id,
-              successful: false,
-              error_message: e instanceof Error ? e.message : "Delivery failed",
-            });
+            errorMessage = e instanceof Error ? e.message : "Delivery failed";
           }
+          const acknowledgement = await db.rpc("finish_notification_email", {
+            job_id: job.id,
+            successful,
+            error_message: errorMessage,
+            expected_attempt: job.attempts,
+          });
+          if (acknowledgement.error) acknowledgementFailures++;
+          else if (successful) sent++;
         }),
       );
     }
+    if (acknowledgementFailures)
+      return jsonError("Email acknowledgement failed. Inspect worker leases before retrying.", 503);
     return NextResponse.json(
       { automation: data, email: { sent, failed, configured: Boolean(apiKey && from) } },
       { headers: { "Cache-Control": "no-store" } },

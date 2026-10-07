@@ -345,10 +345,11 @@ begin
  when 'confirm_evidence' then
   select * into ev from public.evidence where id=(p_payload->>'id')::uuid and run_id=r.id and workspace_id=w for update;
   if not found or ev.created_by<>actor then raise exception 'Evidence registration not found.'; end if;
-  if ev.state='attached' then return jsonb_build_object('run_id',r.id,'version',r.version); end if;
+  if ev.state<>'attached' then
   if not exists(select 1 from storage.objects where bucket_id='evidence' and name=ev.object_path and (metadata->>'size')::bigint=ev.size_bytes and (metadata->>'mimetype')=ev.content_type) then raise exception 'The upload is incomplete or its type/size does not match. Retry the upload.'; end if;
   update public.evidence set state='attached' where id=ev.id;
   perform private.audit(w,r.id,'evidence_attached',jsonb_build_object('evidence_id',ev.id,'step_id',ev.step_id,'label',ev.label));
+  end if;
  when 'create_issue' then
   if r.status in ('completed','cancelled') then raise exception 'Reopen the run before raising a new issue.'; end if;
   target:=(p_payload->>'owner_id')::uuid; perform private.assert_member(w,target);

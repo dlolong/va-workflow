@@ -21,7 +21,6 @@ export function Invitation({ token }: { token: string }) {
           try {
             const result = await execute("accept_invitation", { token });
             router.push(`/workspaces/${result.id}/today`);
-            router.refresh();
           } catch {
             /* Displayed above. */
           }
