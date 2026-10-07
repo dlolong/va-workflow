@@ -154,3 +154,31 @@ Raised body, navigation, table content, notices and standard buttons to 16px; fo
 Working tree was clean at the start. With installed Node 23.2.0, Next 16.3.8 and React 19.3.0, dependency inspection, configuration-shape check, 68 unit/static tests, syntax (50 files), typecheck, lint, production build and diff whitespace check passed (exit 0). All 10 existing desktop/mobile stylesheet dialog regressions passed (exit 0), including SOP and four recurrence layouts with reachable Save controls and no horizontal dialog overflow. These use representative markup and the actual stylesheet, not authenticated workflows. No dependencies were changed. Database, Storage and authenticated browser suites were not repeated for this presentation change; earlier integration and release limitations remain applicable. Verdict: scoped typography update validated, not a new production-readiness certification.
 
 Typography follow-up: reduced eyebrow labels to 12px with 1.2px letter spacing. Explicit page-intro/auth-story selectors prevent their paragraph styles from overriding the eyebrow size. Larger body/form text remains unchanged. Scoped selector review and `git diff --check` passed; full build/browser suites were not repeated for this small CSS adjustment.
+
+## Operations template pack integration — October 7, 2026
+
+Added the supplied `va-operations-templates.ts` byte-for-byte under `src/lib` and appended `OPERATIONS_TEMPLATES` once to the existing catalog: **3 existing + 20 added = 23 templates**, with **113 added steps**. Preserved `EMPTY_WORKFLOW`, all original entries, role placeholders, resources and supplied settings. No current-schema adaptation was necessary. The original untracked public pack was preserved. Its raw developer TypeScript file imports a sibling `./types` that exists only at the intended installation location; excluded precisely that public asset from application compilation. The actual installed module remains fully typechecked. No migrations, seeding, operational writes or publication were performed.
+
+Added 22 unit cases exercising the real catalog, current Zod schema and completion rules: exact companion-JSON equality, catalog reload without duplicates, unique stable IDs, positive/empty/whitespace answers, missing/pending evidence, both before/after labels, permission gates and N/A restrictions. 09A has before-action permission with final review disabled; 15 has both. Only `operations-06-step-02` and `operations-06-step-03` allow N/A. Source review confirms the editor retains step settings, saves resources only from user input and calls `save_process`, not publication. Existing database guards require active authorized reviewers separate from assignees, owner/manager publication, and snapshot preservation. These source observations are not new live database proof. The form's existing outer-whitespace trimming still applies to top-level text on save.
+
+Validation used installed Node 23.2.0 / Next 16.3.8 / React 19.3.0. No dependency or lockfile changes.
+
+| Check | Exit | Result |
+|---|---:|---|
+| `npm ls --depth=0` | 0 | Installed dependencies inspected; no install required |
+| `npm run check:env` | 0 | Local variable shape valid; optional email absent; not service connectivity proof |
+| `npm test` | 0 | 90 passed, no skips/failures |
+| `npm run check:syntax` | 0 | 52 TS/TSX files parsed |
+| `npm run typecheck` | 0 | Installed app and browser test types pass after precise public-asset exclusion |
+| `npm run lint` | 0 | No errors/warnings |
+| `npm run build` | 0 | Production Webpack build and route generation complete |
+| Exact source-pack byte comparison | 0 | Installed module unchanged |
+| `npm run test:db` | 1 | Blocked: no disposable `TEST_DATABASE_URL`; no database tests executed |
+| `E2E_BASE_URL=http://localhost:3107 npx playwright test --grep 'operations catalog reload'` | 0 | **2 skipped**, desktop/mobile: no explicit disposable local environment; not a passing authenticated test |
+| `git diff --check` | 0 | No whitespace errors |
+
+The new authenticated test checks 23 cards after reload, opens all 20 added templates, checks editor fields, saves disposable drafts and compares stored content/settings and unpublished status. It remains **unverified live**. Run it through `scripts/local-qa.mjs` with a dedicated local Supabase stack to close that gap. Existing database snapshot/publication/permission tests were not reported as newly passed. Storage/service suites were not repeated for catalog data.
+
+Initial checks caught two test-fixture assumptions (a URL answer must be a valid URL, and a pre-action gate does not imply final review); corrected the fixtures without altering pack behavior. Initial typecheck exited 2 on the raw public developer module's unresolved import, resolved by the narrow exclusion above. No failing test was skipped to obtain the final unit result.
+
+Verdict: catalog addition integrated and statically validated; authenticated draft/save, authorization and snapshot behavior remain unverified in this run. Client-agreed completion criteria require human judgment: a saved adverse dropdown answer can satisfy a required response and does not automatically create an issue or prove external work succeeded. No production-readiness or external-action verification is claimed.

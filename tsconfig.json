@@ -39,6 +39,7 @@
     ".next-qa/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "public/VA_Relay_Operations_Template_Pack/va-operations-templates.ts"
   ]
 }

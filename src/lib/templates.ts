@@ -1,4 +1,5 @@
 import type { Workflow } from "./types";
+import { OPERATIONS_TEMPLATES } from "./va-operations-templates";
 const step = (id: string, title: string, instructions = ""): Workflow["steps"][number] => ({
   id,
   title,
@@ -58,6 +59,7 @@ export const TEMPLATES: Workflow[] = [
       { ...step("fixes", "Log fixes and routed issues, or 'None'"), kind: "text" },
     ],
   },
+  ...OPERATIONS_TEMPLATES,
 ];
 export const EMPTY_WORKFLOW: Workflow = {
   title: "",

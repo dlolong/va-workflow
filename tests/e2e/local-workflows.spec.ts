@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
+import { TEMPLATES } from "../../src/lib/templates";
 const local =
   process.env.QA_DISPOSABLE === "va-relay" &&
   ["localhost", "127.0.0.1"].includes(
@@ -605,4 +606,59 @@ test("centered dialogs, grouped navigation and persistent header", async ({ page
   });
   expect((await page.locator(".topbar").boundingBox())!.y).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("operations catalog reload and all template drafts preserve their settings", async ({
+  page,
+}) => {
+  const owner = await actor("template owner");
+  const w = (
+    await cmd(owner, null, "create_workspace", {
+      name: "QA template catalog",
+      timezone: "Asia/Manila",
+    })
+  ).id;
+  await login(page, owner);
+  await page.goto(`/workspaces/${w}/processes`);
+  await expect(page.locator('button[id^="template-"]')).toHaveCount(23);
+  await page.reload();
+  await expect(page.locator('button[id^="template-"]')).toHaveCount(23);
+  for (const [index, template] of TEMPLATES.entries()) {
+    if (index < 3) continue;
+    await page.locator(`#template-${index}`).click();
+    await expect(page.locator("#process-title")).toHaveValue(template.title);
+    await expect(page.locator("#process-sop")).toHaveValue(template.sop);
+    await expect(page.locator("#process-resources")).toHaveValue("");
+    await expect(page.locator("#process-review-required")).toBeChecked({
+      checked: template.review_required,
+    });
+    for (const step of template.steps) {
+      await expect(page.locator(`#step-${step.id}-instructions`)).toHaveValue(step.instructions);
+      await expect(page.locator(`#step-${step.id}-kind`)).toHaveValue(step.kind);
+      await expect(page.locator(`#step-${step.id}-evidence`)).toHaveValue(step.evidence);
+      await expect(page.locator(`#step-${step.id}-na`)).toBeChecked({ checked: step.allow_na });
+      await expect(page.locator(`#step-${step.id}-approval`)).toBeChecked({
+        checked: step.approval_before,
+      });
+    }
+    await page.locator("#process-form-submit").click();
+    await expect(page.locator("dialog")).toHaveCount(0);
+    const { data, error } = await owner.client
+      .from("processes")
+      .select("draft,published_version")
+      .eq("workspace_id", w)
+      .eq("title", template.title)
+      .single();
+    expect(error).toBeNull();
+    expect(data?.draft).toEqual({
+      ...template,
+      title: template.title.trim(),
+      description: template.description.trim(),
+      sop: template.sop.trim(),
+      can_do: template.can_do.trim(),
+      ask_first: template.ask_first.trim(),
+      never_do: template.never_do.trim(),
+    });
+    expect(data?.published_version).toBeNull();
+  }
 });
