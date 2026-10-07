@@ -124,3 +124,25 @@ Live checks remain incomplete: the first server launch exited 1 because port 310
 The tutorial page and framing-header rule referenced `/VA_Relay_User_Tutorial.pdf`, but the new 50-page PDF existed only under `src/app/(app)`. Copied it to `public/VA_Relay_User_Tutorial.pdf`, following the installed Next.js public-folder documentation. Preserved the source PDF and all existing user edits.
 
 Scoped checks: byte comparison, linked-public-file existence/PDF signature check, and `git diff --check` passed (exit 0). HTTP verification on localhost:3000 was blocked by an unavailable server (curl exit 7); browser PDF rendering was not verified. Build, database and full application suites were not rerun for this asset-only repair.
+
+## Process and SOP builder layout repair — October 7, 2026
+
+Fixed a CSS selector collision: `.toolbar form` applied search-form flex layout and a 420px width cap to the SOP builder and recurring-schedule forms inside toolbar dialogs. Scoped both desktop and mobile rules to `.toolbar > form`, restoring the dialogs' existing stacked layout without changing fields, critical IDs, save behavior or authorization. The working tree was clean before this change; generated Next declaration changes from validation were restored.
+
+Scoped validation used installed Node 23.2.0, Next 16.3.8, React 19.3.0 and Playwright 1.63.0. No dependency versions or lockfile changed. `npm ls --depth=0` exited 0 (two existing extraneous WASM packages); configuration shape check, 68 unit/static tests, syntax check (50 files), typecheck, lint and production build exited 0.
+
+The new stylesheet browser regression failed before the fix on desktop and mobile (exit 1: expected grid, received flex). After the fix, both passed (exit 0), verifying stacked fields, full available form width, no dialog horizontal overflow, reachable Save and retained inline search layout. This test uses representative dialog markup and the real stylesheet; it does not claim authenticated application or save verification. Added layout assertions to the existing authenticated SOP workflow for future runs.
+
+The authenticated workflow attempt failed in both viewports before opening the builder (exit 1: local Auth signup `fetch failed`; disposable API at 127.0.0.1:57321 unavailable). Database and Storage checks were not rerun for this CSS-only fix. Full save/publication verification remains blocked until the dedicated local Supabase stack is available; rerun the local workflow suite through `scripts/local-qa.mjs` after starting it. No hosted data or configuration was changed.
+
+Verdict: the reported layout defect is reproduced and fixed with desktop/mobile regression coverage. This scoped repair does not change the earlier release limitations or establish production readiness.
+
+### Recurring deadline layout follow-up — October 7, 2026
+
+Confirmed that “Set a recurring deadline” is nested beneath the same toolbar and is covered by the shared selector fix above. Added representative schedule-dialog stylesheet regressions for daily, weekdays, weekly and monthly layouts on desktop/mobile, plus layout assertions in the real authenticated schedule workflow. All **10** stylesheet browser cases passed (exit 0): eight schedule cases and two SOP cases. Checks cover stacked form layout, controls within their grid, no horizontal dialog overflow and reachable Save. Typecheck, lint and diff whitespace checks exited 0. No additional production-code change was needed beyond the shared CSS repair. The prior successful build remains applicable; authenticated save and database checks remain blocked by the unavailable disposable local service as recorded above.
+
+## Vercel scheduler configuration — October 7, 2026
+
+Added `vercel.json` with a daily `/api/cron` invocation at 00:00 UTC, using the Hobby-compatible minimum interval because the user's Vercel plan is unspecified. Updated setup instructions for Production environment variables, automatic bearer authentication, deployment verification and the optional Pro/Enterprise 15-minute schedule. Daily polling can delay work/reminders by approximately a day and is not precise deadline execution.
+
+JSON parsing/configuration assertions, local configuration-shape check and `git diff --check` exited 0. Both local automation secrets are present; their validity against hosted services is not established. No secrets were printed or added to tracked files. No Vercel account settings were changed, no deployment was made, and no production worker was invoked. Hosted scheduling remains pending Production environment-variable setup and deployment; no live automation success is claimed. Application code, database and dependencies were unchanged for this configuration addition, so their suites were not repeated.

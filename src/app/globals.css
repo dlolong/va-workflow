@@ -359,7 +359,7 @@ td .task-link:hover {
   gap: 12px;
   flex-wrap: wrap;
 }
-.toolbar form {
+.toolbar > form {
   display: flex;
   gap: 8px;
   max-width: 420px;
@@ -880,7 +880,7 @@ dialog::backdrop {
   .page-intro > .row > .btn {
     flex: 1;
   }
-  .toolbar form {
+  .toolbar > form {
     max-width: none;
     width: 100%;
   }

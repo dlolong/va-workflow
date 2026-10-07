@@ -95,6 +95,10 @@ test("workspace, draft/publish, modal focus, quick task, archive and screenshots
   const w = page.url().split("/workspaces/")[1]!.split("/")[0]!;
   await page.goto(`/workspaces/${w}/processes`);
   await page.locator("#new-process").click();
+  await expect(page.locator("#process-form")).toHaveCSS("display", "grid");
+  expect(await page.locator("dialog").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
+    true,
+  );
   await page.locator("#process-title").fill("QA published SOP");
   await page.locator('input[id^="step-"][id$="-title"]').fill("Check result");
   await page.locator("#process-form-submit").click();
@@ -330,6 +334,10 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await cmd(owner, w, "publish_process", { id: proc });
   await page.goto(`/workspaces/${w}/processes`);
   await page.locator("#new-schedule").click();
+  await expect(page.locator("#schedule-form")).toHaveCSS("display", "grid");
+  expect(await page.locator("dialog").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
+    true,
+  );
   await page.locator("#schedule-process").selectOption(proc);
   await page.locator("dialog #assignee_id").selectOption(member.id);
   await page.locator("#schedule-frequency").selectOption("daily");

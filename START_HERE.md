@@ -137,7 +137,7 @@ Generate a secret locally:
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 ```
 
-Configure your host or external scheduler to call the deployed endpoint regularly, for example every 15 minutes, with a bearer token:
+Configure your host or external scheduler to call the deployed endpoint regularly with a bearer token:
 
 ```bash
 curl --fail-with-body -X POST \
@@ -145,7 +145,20 @@ curl --fail-with-body -X POST \
   https://YOUR_APP_DOMAIN/api/cron
 ```
 
-The endpoint supports GET and POST. Use `vercel.example.json` only as an opt-in example: rename it to `vercel.json` if deploying there and confirm the chosen scheduling interval is supported by your hosting plan. It is deliberately not activated automatically.
+The endpoint supports GET and POST.
+
+### Vercel setup
+
+The checked-in `vercel.json` schedules `/api/cron` daily at 00:00 UTC (08:00 Asia/Manila). On Hobby, invocation can occur anywhere within that hour. Cron runs on production deployments, not your local development server.
+
+1. In the Vercel project's environment variables, add `CRON_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` for **Production**, using the values from your private local configuration. Keep both server-only. `.env.local` is not uploaded automatically.
+2. Set the public Supabase URL/key for that same project and `NEXT_PUBLIC_APP_URL` to your deployed HTTPS origin. Update the Supabase authentication redirect allowlist for that origin.
+3. Deploy with `vercel.json`. Vercel automatically sends `Authorization: Bearer <CRON_SECRET>` to the cron endpoint.
+4. Check Vercel's Cron Jobs logs and the app's Settings → Automation health → Last worker run after execution. A successful build alone does not prove automation ran.
+
+The daily default works within Hobby limits but can delay generation/reminders by approximately a day; it is unsuitable for precise same-day deadlines. For Pro or Enterprise, change the schedule to `*/15 * * * *` for checks every 15 minutes (as shown in `vercel.example.json`) and redeploy. More-frequent expressions fail deployment on Hobby. Alternatively, use an external scheduler with the same bearer authentication. Resend configuration is needed only for notification emails.
+
+References: [Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing), [cron authentication](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
 The worker uses the latest published process for new runs and never overwrites an existing run's snapshot. A unique schedule/occurrence constraint prevents duplicate occurrences. Catch-up is capped at 31 occurrences per schedule per invocation; repeat generation or correct stale schedules deliberately. Pausing does not delete already-created work. Resuming preserves the prior next due date, so missed occurrences may be generated.
 
