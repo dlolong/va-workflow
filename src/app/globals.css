@@ -1,7 +1,7 @@
 @import "tailwindcss";
 :root {
   --ink: #233b42;
-  --muted: #5d7279;
+  --muted: #4e6269;
   --line: #dce7e8;
   --paper: #f3f7f8;
   --accent: #286c70;
@@ -51,13 +51,13 @@ p {
   margin: 0;
 }
 h1 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.8px;
   line-height: 1.25;
 }
 h2 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
 }
 h3 {
@@ -65,12 +65,15 @@ h3 {
   font-weight: 600;
 }
 small {
-  font-size: 12px;
+  font-size: 14px;
 }
 input:not([type="checkbox"]),
 textarea,
 select {
   width: 100%;
+  min-width: 0;
+  font-size: 16px;
+  color: var(--ink);
   border: 1px solid #cdd8d1;
   border-radius: 7px;
   background: white;
@@ -87,9 +90,10 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 label.field {
+  min-width: 0;
   display: grid;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 label.field > span {
@@ -114,8 +118,8 @@ summary:focus-visible {
   background: white;
   border: 1px solid var(--line);
   border-radius: 7px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   white-space: nowrap;
 }
 .btn:hover {
@@ -133,7 +137,7 @@ summary:focus-visible {
 .btn.small {
   padding: 5px 9px;
   min-height: 32px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .btn.link {
   background: transparent;
@@ -144,9 +148,11 @@ summary:focus-visible {
 .muted {
   color: var(--muted);
 }
-.eyebrow {
+.eyebrow,
+.page-intro .eyebrow,
+.auth-story .eyebrow {
   text-transform: uppercase;
-  letter-spacing: 1.8px;
+  letter-spacing: 1.2px;
   font-size: 10px;
   font-weight: 700;
   color: var(--muted);
@@ -192,7 +198,7 @@ summary:focus-visible {
   flex-wrap: wrap;
 }
 .panel-heading p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -209,7 +215,7 @@ summary:focus-visible {
   border-radius: 5px;
   background: #eef1ef;
   color: #52605b;
-  font-size: 11px;
+  font-size: 14px;
   text-transform: capitalize;
   white-space: nowrap;
 }
@@ -234,7 +240,7 @@ summary:focus-visible {
   padding: 11px 14px;
   background: #edf4f0;
   border: 1px solid #d4e7dc;
-  font-size: 13px;
+  font-size: 16px;
   overflow-wrap: anywhere;
 }
 .notice.error {
@@ -248,7 +254,7 @@ summary:focus-visible {
   color: #775b27;
 }
 .notice code {
-  font-size: 12px;
+  font-size: 14px;
 }
 .empty {
   text-align: center;
@@ -261,12 +267,12 @@ summary:focus-visible {
 }
 .grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 .grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .full {
@@ -295,11 +301,11 @@ summary:focus-visible {
   overflow-wrap: anywhere;
 }
 .label-line {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .hint {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.5;
 }
@@ -307,7 +313,7 @@ summary:focus-visible {
   display: flex;
   gap: 9px;
   align-items: center;
-  font-size: 13px;
+  font-size: 16px;
 }
 .table-wrap {
   max-width: 100%;
@@ -319,7 +325,7 @@ table {
   text-align: left;
 }
 th {
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 0.3px;
   color: var(--muted);
   background: #fafbfa;
@@ -331,10 +337,10 @@ td {
   border-top: 1px solid var(--line);
   padding: 13px 16px;
   vertical-align: top;
-  font-size: 13px;
+  font-size: 16px;
 }
 td p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -342,7 +348,7 @@ tr:hover td {
   background: #fbfcfb;
 }
 td .task-link {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
 }
 td .task-link:hover {
@@ -417,8 +423,8 @@ td .task-link:hover {
 }
 .nav-link {
   padding: 9px 12px;
-  color: #516a70;
-  font-size: 13px;
+  color: var(--ink);
+  font-size: 14px;
   border-radius: 7px;
   display: flex;
   align-items: center;
@@ -443,7 +449,7 @@ td .task-link:hover {
   margin-top: auto;
   padding: 12px 10px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .main {
@@ -466,7 +472,7 @@ td .task-link:hover {
 .topbar .workspace-select {
   max-width: 270px;
   border: 0;
-  font-size: 13px;
+  font-size: 16px;
   background: transparent;
 }
 .avatar {
@@ -477,7 +483,7 @@ td .task-link:hover {
   color: #43634b;
   display: grid;
   place-items: center;
-  font-size: 11px;
+  font-size: 14px;
 }
 .content {
   max-width: 1400px;
@@ -499,7 +505,7 @@ td .task-link:hover {
 .page-intro p {
   color: var(--muted);
   margin-top: 7px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .menu-toggle {
   display: none;
@@ -602,7 +608,7 @@ dialog::backdrop {
   background: #fbfcfa;
 }
 .step-editor .step-index {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--accent);
 }
 .run-grid {
@@ -625,7 +631,7 @@ dialog::backdrop {
   display: grid;
   place-items: center;
   background: #f0f4ef;
-  font-size: 11px;
+  font-size: 14px;
   color: #67826a;
 }
 .step-number.done {
@@ -633,7 +639,7 @@ dialog::backdrop {
   color: #226c42;
 }
 .run-step h3 {
-  font-size: 14px;
+  font-size: 16px;
 }
 .run-step-body {
   padding-left: 37px;
@@ -645,7 +651,7 @@ dialog::backdrop {
   border-radius: 7px;
   background: #f7f9f6;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .step-details summary {
   cursor: pointer;
@@ -658,7 +664,7 @@ dialog::backdrop {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 9px 11px;
-  font-size: 12px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -699,7 +705,7 @@ dialog::backdrop {
 }
 .auth-story p {
   max-width: 410px;
-  font-size: 15px;
+  font-size: 16px;
   margin-top: 20px;
   color: var(--muted);
 }
@@ -720,7 +726,7 @@ dialog::backdrop {
 .auth-switch {
   display: flex;
   gap: 14px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .auth-switch button {
   background: transparent;
@@ -740,11 +746,11 @@ dialog::backdrop {
   color: #e4eee5;
   border-radius: 9px;
   padding: 18px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .saved {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 14px;
 }
 .sr-only {
   position: absolute;
@@ -772,7 +778,7 @@ dialog::backdrop {
   }
   .run-side {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
   .run-side > .panel {
