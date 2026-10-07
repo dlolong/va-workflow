@@ -1,0 +1,72 @@
+import type { Workflow } from "./types";
+const step = (id: string, title: string, instructions = ""): Workflow["steps"][number] => ({
+  id,
+  title,
+  instructions,
+  kind: "checkbox",
+  required: true,
+  allow_na: false,
+  evidence: "none",
+  approval_before: false,
+  options: [],
+});
+export const TEMPLATES: Workflow[] = [
+  {
+    title: "Daily marketplace mail review",
+    description: "Review operational messages and route exceptions.",
+    sop: "Use the client's approved accounts. Review messages, record exact deadlines, and handle only actions within your authority. This template is generic; the owner must approve its instructions before use.",
+    can_do: "Read notifications; record deadlines; prepare a recommended next action.",
+    ask_first: "Non-routine requests, account restrictions, financial or policy decisions.",
+    never_do: "Pay invoices or make business decisions without authority.",
+    resources: [],
+    review_required: false,
+    steps: [
+      step("mail", "Review marketplace and compliance messages"),
+      { ...step("deadlines", "Record deadlines and sources"), kind: "text" },
+      { ...step("exceptions", "Log exceptions or record 'None'"), kind: "text" },
+    ],
+  },
+  {
+    title: "Invoice collection and handoff",
+    description: "Track one invoice from request through delivery to bookkeeping.",
+    sop: "Use one run per invoice and enter the invoice reference. Verify the client, supplier, and requested period. Send through the approved channel. This process does not authorize payment or determine tax treatment.",
+    can_do: "Collect the invoice and check completeness.",
+    ask_first: "Missing or inconsistent supplier, amount, currency, or tax information.",
+    never_do: "Pay the invoice or invent tax information.",
+    resources: [],
+    review_required: true,
+    steps: [
+      step("collect", "Locate the invoice"),
+      { ...step("details", "Verify invoice details"), evidence: "file" },
+      { ...step("handoff", "Record the bookkeeping handoff reference"), kind: "text" },
+    ],
+  },
+  {
+    title: "Weekly listing check",
+    description: "Check one listing per run; record the product and channel.",
+    sop: "Check the live listing against the owner's approved source of truth. Fix only permitted issues, otherwise create an issue with an owner and follow-up date. Evidence records what the VA submitted, not an independently verified marketplace action.",
+    can_do: "Inspect listings and document differences.",
+    ask_first: "Changes outside approved prices or content; unresolved account issues.",
+    never_do: "Make strategic pricing or supply-chain decisions.",
+    resources: [],
+    review_required: false,
+    steps: [
+      step("live", "Confirm the listing is online"),
+      step("category", "Check category and delivery promise"),
+      step("content", "Check image and content"),
+      { ...step("price", "Record verified live price"), kind: "amount", evidence: "file" },
+      { ...step("fixes", "Log fixes and routed issues, or 'None'"), kind: "text" },
+    ],
+  },
+];
+export const EMPTY_WORKFLOW: Workflow = {
+  title: "",
+  description: "",
+  sop: "",
+  can_do: "",
+  ask_first: "",
+  never_do: "",
+  resources: [],
+  steps: [],
+  review_required: false,
+};

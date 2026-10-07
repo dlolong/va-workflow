@@ -1,0 +1,364 @@
+TAP version 13
+# Subtest: waiting on client remains overdue
+ok 1 - waiting on client remains overdue
+  ---
+  duration_ms: 2.453308
+  type: 'test'
+  ...
+# Subtest: blocked remains overdue
+ok 2 - blocked remains overdue
+  ---
+  duration_ms: 0.456583
+  type: 'test'
+  ...
+# Subtest: accepted work is not in overdue backlog
+ok 3 - accepted work is not in overdue backlog
+  ---
+  duration_ms: 0.551955
+  type: 'test'
+  ...
+# Subtest: cancelled work is not overdue
+ok 4 - cancelled work is not overdue
+  ---
+  duration_ms: 0.34453
+  type: 'test'
+  ...
+# Subtest: no deadline is not silently overdue
+ok 5 - no deadline is not silently overdue
+  ---
+  duration_ms: 0.201805
+  type: 'test'
+  ...
+# Subtest: future deadline is not overdue
+ok 6 - future deadline is not overdue
+  ---
+  duration_ms: 0.297521
+  type: 'test'
+  ...
+# Subtest: local due-today respects Manila midnight
+ok 7 - local due-today respects Manila midnight
+  ---
+  duration_ms: 46.732968
+  type: 'test'
+  ...
+# Subtest: local due-today differs from UTC day
+ok 8 - local due-today differs from UTC day
+  ---
+  duration_ms: 0.747861
+  type: 'test'
+  ...
+# Subtest: safe internal return path is retained
+ok 9 - safe internal return path is retained
+  ---
+  duration_ms: 1.886105
+  type: 'test'
+  ...
+# Subtest: reject redirect "https://evil.example"
+ok 10 - reject redirect "https://evil.example"
+  ---
+  duration_ms: 2.17107
+  type: 'test'
+  ...
+# Subtest: reject redirect "//evil.example"
+ok 11 - reject redirect "//evil.example"
+  ---
+  duration_ms: 0.510749
+  type: 'test'
+  ...
+# Subtest: reject redirect "/\\\\evil.example"
+ok 12 - reject redirect "/\\\\evil.example"
+  ---
+  duration_ms: 0.061127
+  type: 'test'
+  ...
+# Subtest: reject redirect "/%2f%2fevil.example"
+ok 13 - reject redirect "/%2f%2fevil.example"
+  ---
+  duration_ms: 0.410875
+  type: 'test'
+  ...
+# Subtest: reject redirect "/%255c%255cevil.example"
+ok 14 - reject redirect "/%255c%255cevil.example"
+  ---
+  duration_ms: 0.081372
+  type: 'test'
+  ...
+# Subtest: reject redirect "/\\r\\nLocation: evil"
+ok 15 - reject redirect "/\\r\\nLocation: evil"
+  ---
+  duration_ms: 0.040089
+  type: 'test'
+  ...
+# Subtest: reject redirect "/%ZZ"
+ok 16 - reject redirect "/%ZZ"
+  ---
+  duration_ms: 0.086216
+  type: 'test'
+  ...
+# Subtest: missing redirect goes to dashboard
+ok 17 - missing redirect goes to dashboard
+  ---
+  duration_ms: 0.156172
+  type: 'test'
+  ...
+# Subtest: safe URLs allow HTTP(S)
+ok 18 - safe URLs allow HTTP(S)
+  ---
+  duration_ms: 0.139956
+  type: 'test'
+  ...
+# Subtest: unsafe URL javascript:alert(1)
+ok 19 - unsafe URL javascript:alert(1)
+  ---
+  duration_ms: 0.47329
+  type: 'test'
+  ...
+# Subtest: unsafe URL data:text/html,hello
+ok 20 - unsafe URL data:text/html,hello
+  ---
+  duration_ms: 0.055816
+  type: 'test'
+  ...
+# Subtest: unsafe URL ftp://example.com
+ok 21 - unsafe URL ftp://example.com
+  ---
+  duration_ms: 0.042251
+  type: 'test'
+  ...
+# Subtest: unsafe URL https://user:pass@example.com
+ok 22 - unsafe URL https://user:pass@example.com
+  ---
+  duration_ms: 0.070763
+  type: 'test'
+  ...
+# Subtest: CSV quotes embedded commas and quotes
+ok 23 - CSV quotes embedded commas and quotes
+  ---
+  duration_ms: 0.152892
+  type: 'test'
+  ...
+# Subtest: CSV formula defense =1+1
+ok 24 - CSV formula defense =1+1
+  ---
+  duration_ms: 0.136755
+  type: 'test'
+  ...
+# Subtest: CSV formula defense +SUM(A1)
+ok 25 - CSV formula defense +SUM(A1)
+  ---
+  duration_ms: 0.039186
+  type: 'test'
+  ...
+# Subtest: CSV formula defense @SUM(1)
+ok 26 - CSV formula defense @SUM(1)
+  ---
+  duration_ms: 0.036718
+  type: 'test'
+  ...
+# Subtest: CSV formula defense -1+2
+ok 27 - CSV formula defense -1+2
+  ---
+  duration_ms: 0.045278
+  type: 'test'
+  ...
+# Subtest: CSV formula defense  \\t=HYPERLINK(1)
+ok 28 - CSV formula defense  \\t=HYPERLINK(1)
+  ---
+  duration_ms: 0.539357
+  type: 'test'
+  ...
+# Subtest: CSV has CRLF row breaks
+ok 29 - CSV has CRLF row breaks
+  ---
+  duration_ms: 0.24276
+  type: 'test'
+  ...
+# Subtest: missing required checkbox fails
+ok 30 - missing required checkbox fails
+  ---
+  duration_ms: 0.281814
+  type: 'test'
+  ...
+# Subtest: unchecked required checkbox fails
+ok 31 - unchecked required checkbox fails
+  ---
+  duration_ms: 0.113441
+  type: 'test'
+  ...
+# Subtest: valid checkbox completes
+ok 32 - valid checkbox completes
+  ---
+  duration_ms: 0.760045
+  type: 'test'
+  ...
+# Subtest: numeric zero is a valid required answer
+ok 33 - numeric zero is a valid required answer
+  ---
+  duration_ms: 0.558644
+  type: 'test'
+  ...
+# Subtest: No is a valid yes/no answer
+ok 34 - No is a valid yes/no answer
+  ---
+  duration_ms: 0.714257
+  type: 'test'
+  ...
+# Subtest: N/A requires configured permission and explanation
+ok 35 - N/A requires configured permission and explanation
+  ---
+  duration_ms: 0.110267
+  type: 'test'
+  ...
+# Subtest: approved N/A skips proof requirements
+ok 36 - approved N/A skips proof requirements
+  ---
+  duration_ms: 0.070601
+  type: 'test'
+  ...
+# Subtest: pending upload is not evidence
+ok 37 - pending upload is not evidence
+  ---
+  duration_ms: 0.646612
+  type: 'test'
+  ...
+# Subtest: attached evidence counts
+ok 38 - attached evidence counts
+  ---
+  duration_ms: 0.125092
+  type: 'test'
+  ...
+# Subtest: before/after needs both labels
+ok 39 - before/after needs both labels
+  ---
+  duration_ms: 0.225584
+  type: 'test'
+  ...
+# Subtest: approved permission unlocks the gate
+ok 40 - approved permission unlocks the gate
+  ---
+  duration_ms: 0.081912
+  type: 'test'
+  ...
+# Subtest: pending permission does not unlock the gate
+ok 41 - pending permission does not unlock the gate
+  ---
+  duration_ms: 0.054711
+  type: 'test'
+  ...
+# Subtest: checklist paste strips list markers
+ok 42 - checklist paste strips list markers
+  ---
+  duration_ms: 1.19462
+  type: 'test'
+  ...
+# Subtest: manager role is explicit
+ok 43 - manager role is explicit
+  ---
+  duration_ms: 0.088364
+  type: 'test'
+  ...
+# Subtest: filename cleanup removes separators
+ok 44 - filename cleanup removes separators
+  ---
+  duration_ms: 0.11428
+  type: 'test'
+  ...
+# Subtest: statuses read naturally
+ok 45 - statuses read naturally
+  ---
+  duration_ms: 0.103426
+  type: 'test'
+  ...
+# Subtest: whitespace alone does not satisfy a required text answer
+ok 46 - whitespace alone does not satisfy a required text answer
+  ---
+  duration_ms: 0.678249
+  type: 'test'
+  ...
+# Subtest: all business writes are explicitly revoked
+ok 47 - all business writes are explicitly revoked
+  ---
+  duration_ms: 2.066582
+  type: 'test'
+  ...
+# Subtest: RLS enabled through the migration table loop
+ok 48 - RLS enabled through the migration table loop
+  ---
+  duration_ms: 0.45627
+  type: 'test'
+  ...
+# Subtest: recurring occurrences have a unique database constraint
+ok 49 - recurring occurrences have a unique database constraint
+  ---
+  duration_ms: 0.560331
+  type: 'test'
+  ...
+# Subtest: versioned runs refer to immutable process versions
+ok 50 - versioned runs refer to immutable process versions
+  ---
+  duration_ms: 0.480809
+  type: 'test'
+  ...
+# Subtest: uploaded evidence bucket is not public
+ok 51 - uploaded evidence bucket is not public
+  ---
+  duration_ms: 0.218199
+  type: 'test'
+  ...
+# Subtest: storage does not grant overwrite or delete
+ok 52 - storage does not grant overwrite or delete
+  ---
+  duration_ms: 1.401114
+  type: 'test'
+  ...
+# Subtest: commands use request IDs and receipts
+ok 53 - commands use request IDs and receipts
+  ---
+  duration_ms: 0.897755
+  type: 'test'
+  ...
+# Subtest: stale response saves are rejected
+ok 54 - stale response saves are rejected
+  ---
+  duration_ms: 0.693608
+  type: 'test'
+  ...
+# Subtest: completion is checked by the database
+ok 55 - completion is checked by the database
+  ---
+  duration_ms: 0.613787
+  type: 'test'
+  ...
+# Subtest: storage existence is required before confirmation
+ok 56 - storage existence is required before confirmation
+  ---
+  duration_ms: 0.521382
+  type: 'test'
+  ...
+# Subtest: worker functions are not callable by authenticated users
+ok 57 - worker functions are not callable by authenticated users
+  ---
+  duration_ms: 0.291086
+  type: 'test'
+  ...
+# Subtest: tokens are hashed rather than stored in invitation rows
+ok 58 - tokens are hashed rather than stored in invitation rows
+  ---
+  duration_ms: 0.131958
+  type: 'test'
+  ...
+# Subtest: worker-only client remains isolated
+ok 59 - worker-only client remains isolated
+  ---
+  duration_ms: 6.902435
+  type: 'test'
+  ...
+1..59
+# tests 59
+# suites 0
+# pass 59
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 271.948983

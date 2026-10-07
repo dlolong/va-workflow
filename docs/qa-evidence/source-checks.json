@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-06",
+  "checks": {
+    "typescript_ast_files": 45,
+    "typescript_syntax_transpiled": 44,
+    "internal_imports_resolved": 81,
+    "javascript_syntax_files": 9,
+    "json_files": 4,
+    "sql_files_marker_check_only": 4
+  },
+  "errors": [],
+  "not_verified": [
+    "dependency install",
+    "TypeScript semantic typecheck",
+    "ESLint",
+    "Next.js production build",
+    "PostgreSQL migration execution",
+    "RLS/RPC integration",
+    "Storage API",
+    "Browser rendering",
+    "Email delivery",
+    "Backup restore"
+  ]
+}

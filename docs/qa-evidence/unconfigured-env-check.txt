@@ -1,0 +1,6 @@
+MISSING NEXT_PUBLIC_SUPABASE_URL
+MISSING NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+MISSING NEXT_PUBLIC_APP_URL
+OPTIONAL automation disabled/incomplete: add SUPABASE_SERVICE_ROLE_KEY and a 32+ character CRON_SECRET
+OPTIONAL notification emails remain in-app/outbox until RESEND_API_KEY and EMAIL_FROM are configured
+This checks configuration shape only, not connectivity or credentials.
