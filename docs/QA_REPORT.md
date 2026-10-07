@@ -118,3 +118,9 @@ Added `/tutorial` within the authenticated app shell, with desktop/mobile Tutori
 Scoped verification: 68 unit/static tests passed (exit 0); lint, syntax (49 files), configuration-shape check, dependency inspection, production build and final typecheck exited 0. The initial typecheck exited 2 because generated `.next-qa` files were missing; the subsequent check after building passed without source/config suppression. Dependencies were already installed and were not changed. PDF byte comparison and diff whitespace check exited 0.
 
 Live checks remain incomplete: the first server launch exited 1 because port 3107 was occupied; a launch on 3198 reported ready, but the separate HTTP probe could not connect (curl exit 7). Authenticated browser rendering and device-native PDF rendering were not verified in this change. Database/Storage integration suites were not repeated for this static tutorial addition. Earlier release limitations remain applicable.
+
+## Tutorial PDF path repair — October 7, 2026
+
+The tutorial page and framing-header rule referenced `/VA_Relay_User_Tutorial.pdf`, but the new 50-page PDF existed only under `src/app/(app)`. Copied it to `public/VA_Relay_User_Tutorial.pdf`, following the installed Next.js public-folder documentation. Preserved the source PDF and all existing user edits.
+
+Scoped checks: byte comparison, linked-public-file existence/PDF signature check, and `git diff --check` passed (exit 0). HTTP verification on localhost:3000 was blocked by an unavailable server (curl exit 7); browser PDF rendering was not verified. Build, database and full application suites were not rerun for this asset-only repair.
