@@ -3,6 +3,7 @@ import "../load-env.mjs";
 import pg from "pg";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { transferOwnership } from "./ownership.mjs";
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !["localhost", "127.0.0.1", "[::1]"].includes(new URL(url).hostname))
   throw new Error("Blocked: disposable local TEST_DATABASE_URL required; tests not run.");
@@ -193,6 +194,69 @@ try {
       "Human edit",
     );
   });
+  await check("completed preparation and its saved response survive repeat", async () => {
+    const r = (await db.query("select * from public.runs where workspace_id=$1", [w])).rows[0];
+    await cmd(w, "save_response", {
+      run_id: r.id,
+      expected_version: r.version,
+      step_id: "check",
+      value: true,
+      not_applicable: false,
+      na_reason: "",
+    });
+    const updated = (await db.query("select version from public.runs where id=$1", [r.id])).rows[0];
+    await cmd(w, "submit_run", { run_id: r.id, expected_version: updated.version });
+    await provision(true);
+    assert.equal(
+      (await db.query("select status from public.runs where id=$1", [r.id])).rows[0].status,
+      "completed",
+    );
+    assert.equal(
+      (await db.query("select value from public.step_responses where run_id=$1", [r.id])).rows[0]
+        .value,
+      true,
+    );
+  });
+  await check(
+    "foreign child ledger reference blocks apply; unrelated workspace stays unchanged",
+    async () => {
+      const other = (
+        await cmd(null, "create_workspace", {
+          name: "Synthetic unrelated workspace",
+          timezone: "UTC",
+        })
+      ).id;
+      const foreign = (await cmd(other, "save_process", { id: null, content })).id;
+      const before = (
+        await db.query(
+          "select row_to_json(p) value from public.processes p where workspace_id=$1",
+          [other],
+        )
+      ).rows;
+      await db.query("savepoint foreign_reference");
+      await db.query("reset role");
+      await db.query(
+        "update private.provisioning_items set record_id=$1 where workspace_id=$2 and item_key='process'",
+        [foreign, w],
+      );
+      await identity(owner);
+      const preview = await provision();
+      assert.equal(preview.conflicts, 1);
+      await denied(() => provision(true));
+      await db.query("rollback to savepoint foreign_reference");
+      await identity(owner);
+      await provision(true);
+      assert.deepEqual(
+        (
+          await db.query(
+            "select row_to_json(p) value from public.processes p where workspace_id=$1",
+            [other],
+          )
+        ).rows,
+        before,
+      );
+    },
+  );
   await check("VA and unrelated users cannot provision", async () => {
     for (const id of [target, outsider]) {
       await identity(id);
@@ -214,6 +278,88 @@ try {
     );
     await denied(() => db.query("select * from private.provisioning_items"));
   });
+  await db.query("reset role");
+  const transfer = { workspaceId: w, previousOwnerId: owner, newOwnerId: outsider };
+  await check(
+    "ownership maintenance dry run and missing-target rejection make no writes",
+    async () => {
+      assert.equal((await transferOwnership(db, transfer)).state, "transfer_ready");
+      await assert.rejects(
+        transferOwnership(db, { ...transfer, workspaceId: randomUUID() }, true),
+        /missing/,
+      );
+      assert.equal(
+        (await db.query("select owner_id from public.workspaces where id=$1", [w])).rows[0]
+          .owner_id,
+        owner,
+      );
+    },
+  );
+  await check("ownership maintenance rejects outstanding review responsibilities", async () => {
+    await db.query("savepoint review_conflict");
+    await db.query(
+      "update public.runs set reviewer_id=$2, status='in_progress' where workspace_id=$1",
+      [w, owner],
+    );
+    await assert.rejects(transferOwnership(db, transfer, true), /review responsibilities/);
+    await db.query("rollback to savepoint review_conflict");
+  });
+  await check(
+    "ownership transfer preserves work and other memberships and is repeat safe",
+    async () => {
+      const otherBefore = (
+        await db.query(
+          "select row_to_json(m) value from public.memberships m where workspace_id<>$1 order by workspace_id,user_id",
+          [w],
+        )
+      ).rows;
+      const runsBefore = (
+        await db.query("select row_to_json(r) value from public.runs r where workspace_id=$1", [w])
+      ).rows;
+      await db.query("savepoint ownership_transfer");
+      assert.equal((await transferOwnership(db, transfer, true)).state, "transferred");
+      assert.equal((await transferOwnership(db, transfer, true)).state, "reuse_preserved");
+      assert.equal(
+        (await db.query("select owner_id from public.workspaces where id=$1", [w])).rows[0]
+          .owner_id,
+        outsider,
+      );
+      assert.equal(
+        (
+          await db.query(
+            "select role from public.memberships where workspace_id=$1 and user_id=$2",
+            [w, owner],
+          )
+        ).rows[0].role,
+        "va",
+      );
+      const audit = (
+        await db.query(
+          "select actor_id from public.audit_events where workspace_id=$1 and event='workspace_ownership_maintenance'",
+          [w],
+        )
+      ).rows;
+      assert.deepEqual(audit, [{ actor_id: null }]);
+      assert.deepEqual(
+        (
+          await db.query(
+            "select row_to_json(m) value from public.memberships m where workspace_id<>$1 order by workspace_id,user_id",
+            [w],
+          )
+        ).rows,
+        otherBefore,
+      );
+      assert.deepEqual(
+        (
+          await db.query("select row_to_json(r) value from public.runs r where workspace_id=$1", [
+            w,
+          ])
+        ).rows,
+        runsBefore,
+      );
+      await db.query("rollback to savepoint ownership_transfer");
+    },
+  );
   console.log(
     `${passed} provisioning database tests passed. Concurrent execution and actual-user browser access are separate checks.`,
   );
@@ -221,7 +367,7 @@ try {
   console.error(`Provisioning database tests failed after ${passed} checks:`, error.message);
   process.exitCode = 1;
 } finally {
-  await db.query("reset role");
   await db.query("rollback");
+  await db.query("reset role");
   await db.end();
 }

@@ -196,3 +196,61 @@ Executed with Node 23.2.0 / Next 16.3.8: 105 unit/static tests passed (exit 0), 
 `node scripts/provisioning/test-db.mjs` exited 1 before connecting: no disposable local `TEST_DATABASE_URL`. `node scripts/provisioning/test-concurrency.mjs` exited 1 before creating fixtures: explicit disposable local Auth environment absent. Docker inspection first hit sandbox denial, then confirmed the local daemon was stopped (exit 1). These tests are **blocked, not passed**; the new migration has not been applied anywhere. Real concurrent safety, transaction rollback, mail suppression and RLS tests remain unverified pending that stack. Actual-user browser access remains unverified, and no password/session for that user was requested or fabricated.
 
 Result: **DRY RUN COMPLETE, application blocked; zero records applied**. Runnable apply tooling is present but must not be used before disposable database/concurrency validation, role-conflict resolution, verified setup actor and explicit reviewed-target confirmation. Details and commands: `scripts/provisioning/README.md`. Previous release limits still apply.
+
+### Provisioning validation follow-up — October 8, 2026
+
+The user confirmed the hosted target is disposable staging. Private configuration now records that classification and the expected existing owner as setup actor. No hosted records or schema were changed.
+
+Recovered the existing local validation VM by retaining its launching terminal; a detached launch reported success but stopped before Docker was reachable. Started only the dedicated `va-relay-local-qa` containers. Applied migration `202610070004_provisioning.sql` to that disposable local database with `psql -v ON_ERROR_STOP=1` (exit 0). No migration rewrite or hosted migration application occurred.
+
+Executed successfully against actual local services: all 9 provisioning database cases; the concurrent Auth/RPC test (two calls yielded exactly one process and one preparation run); all 66 existing database integration cases. These now verify migration execution, role denials/isolation, durable reuse after receipt removal, edited-draft preservation, initial draft/run/training states and suppression of new setup email jobs while retaining in-app notification records. The rollback SQL suites leave no fixtures; the explicitly local concurrency/browser suites retain synthetic fixtures.
+
+Added a real authenticated VA browser regression checking My Day preparation visibility, unchecked initial response, draft status with no publish/start controls, and not-started Handovers. Desktop/mobile Chromium: 2 passed, 0 skipped (exit 0). Initial browser run failed 2 cases due to an incorrectly capitalized text assertion; corrected it to inspect the actual draft badge case-insensitively, then both passed. This is synthetic local-user verification, not actual-user hosted-browser proof.
+
+The authenticated hosted setup remains blocked because `SETUP_ACTOR_ACCESS_TOKEN` is not configured. Owner-session instructions were supplied without requesting credentials in chat. The private dry-run target has an active VA and distinct owner, but no successful hosted application is claimed. Result remains **DRY RUN COMPLETE — not applied**. Previous warnings that the candidate migration and concurrency tests had never executed are superseded for the disposable local environment only.
+
+### Authorized staging application — October 8, 2026
+
+After the user confirmed the disposable staging environment and supplied the separate owner session locally, the authenticated provisioning RPC dry run returned 41 create candidates, no conflicts and no blockers (exit 0). The reviewed manifest hash was recorded privately. The explicit apply command completed successfully (exit 0), and its immediate authenticated repeat preflight returned `reuse_preserved` for all 41 records.
+
+Additional authenticated owner reads verified 20 exact-content unpublished process drafts and 21 one-off preparation runs assigned to the intended active VA, all not-started, uncompleted and without due dates (exit 0). No existing business records were overwritten, no operational SOP was published, and no schedules or training approvals were created. Trainer mapping and operational configuration remain deferred. Application used the authenticated owner RPC, not admin direct writes or target impersonation. Private evidence is in ignored `artifacts/provisioning/apply-result.json`, `verification.json` and `SETUP_REPORT.txt`; no credentials were printed.
+
+Result: **APPLIED AND VERIFIED** for the explicitly confirmed staging target's database records. Actual-user hosted browser verification remains unperformed; the earlier synthetic local desktop/mobile tests are separate evidence. Prior “not applied” entries describe earlier states and are superseded by this verified application. No production deployment or production certification is implied.
+
+### Fixed-target executive workflow setup and ownership maintenance — October 9, 2026
+
+**DRY RUN COMPLETE — hosted application blocked; no hosted mutations.** Prepared a private fixed-target manifest with eleven unpublished workflow definitions and one undated setup checklist, using the existing current-schema validator and durable provisioning ledger. Every schedule/publication proposal remains inactive/unapproved. Private input, read-only reports, commands, coverage/readiness and start-here notes are in gitignored `.private/`; no private identifiers were added to tracked tests or app bundles. Existing user changes, including the removal of the public source pack, were preserved.
+
+Read-only hosted discovery fetched the supplied workspace by primary key and verified the exact existing Auth account, stored name/timezone and memberships. It found the intended VA is currently the sole owner; the stored operator token failed authentication. The user subsequently explicitly authorized a transfer to another existing account and changing the previous owner to VA. The private configuration reflects that requested owner; the database does not yet. A narrowly scoped transaction-based maintenance helper and private fixed-target command are prepared. It verifies accounts, locks the exact workspace, rejects conflicting roles or active review obligations, preserves work/other memberships and writes a truthful maintenance audit without impersonating a user. No RLS/grant/schema changes or privileged web endpoint were introduced. Actual transfer is blocked by the missing server-only database connection; draft application also requires a valid owner/manager session. No blind service-role REST role edits were performed.
+
+Fixed primary-key discovery so a stale contextual name cannot reject the correct supplied UUID or select another workspace. Fixed-target config/manifest/environment mismatches now fail before remote work. Added synthetic exact-ID and redirect guards, completed-response preservation, foreign-child rejection and ownership-transfer regressions. Preserved the catalog exact-content test using the original source JSON digest after the user moved that file out of `public/`. Corrected two browser assertions to count open dialogs; the closed navigation dialog stays mounted. No product UI or authorization semantics were altered.
+
+Executed checks and actual exit codes:
+
+| Check | Exit | Result |
+|---|---:|---|
+| Initial Node 23 offline install | 1 | Unsupported dependency engine; did not force install. |
+| Node 22.23.3 `npm ci` | 0 | Exact lockfile installed; lockfile unchanged. Next 16.3.8, React 19.3.0. |
+| Configuration shape check | 0 | Does not prove operator authorization. |
+| Unit/static suite | 0 | 113 passed, zero skipped. Initial run failed on the moved public source pack; fixed as described. |
+| Syntax, lint, typecheck | 0 | Typecheck rerun sequentially after build; an initial concurrent run failed while build regenerated `.next/types`. |
+| Production build | 0 | Successful Webpack build; no production-readiness claim. |
+| Private workflow schema/content check | 0 | Eleven definitions, separate setup, calendar gates, exact noon headings, daily cadence and inactive schedules. |
+| Local PostgreSQL integration | 0 | 66 existing RLS/RPC/approval/schedule cases. |
+| Local provisioning/ownership integration | 0 | 14 rollback-only cases. Initial new response fixture omitted required `not_applicable`; corrected and rerun. |
+| Local real Auth/RPC concurrency | 0 | Two concurrent calls created one draft and one preparation run. |
+| Local authenticated provisioning browser tests | 0 | Desktop/mobile: 2 passed, zero skipped. |
+| Local two-session approval/evidence browser tests | 0 | Desktop/mobile: 2 passed, zero skipped; includes real Storage upload and interrupted-confirmation retry. Initial closed-dialog assertion failed; corrected and rerun. |
+| Hosted fixed-target dry run | 2 | Ownership mismatch/VA role conflict and unverified actor block the authenticated ledger preflight. |
+| Ownership-transfer dry run | 2 | Missing `SETUP_DATABASE_URL`; no transfer attempted. |
+| Dependency audit | 1 | Five high-severity development-chain findings through Next ESLint/fast-glob/micromatch/braces; audit suggested an incompatible Next ESLint downgrade, which was not applied. |
+
+The local validation VM and existing dedicated QA containers were recovered; no hosted database reset, migration, seed or test fixtures were used. Browser tests use synthetic local users, not the actual target's session. Actual hosted-user browser access, external messaging/calendar/recording/transcription and AI actions were not performed. Local Storage evidence is distinct from hosted/external proof. Source/definition checks do not establish automatic invitation/digest deduplication, stale-approval revocation or exact ten-minute messaging: these remain explicit manual operating procedures. V1 workspace-wide visibility is documented; task assignment does not create confidentiality boundaries.
+
+Hosted counts: created 0, reused 0 confirmed, updated 0; 12 setup records deferred. Read-only title checks found 12 possible create candidates and zero title collisions, but durable ledger reuse remains unverified without authenticated preflight. One ownership/VA role conflict is unresolved until the authorized transfer runs. All other hosted workspaces and memberships were untouched by this work. Schedule activation, reviewer mapping, channel/account references, meeting details, recording/private handling, three-week bounds and go-live remain pending. See private report for exact targets and executable commands.
+
+### Small signed-in email in the header — October 9, 2026
+
+The authenticated layout now passes the current verified user's email to the header. It appears as muted 11px text beneath the display name on desktop and remains visible on mobile; long addresses truncate to preserve the compact layout, with the full value in the title attribute. No additional account lookup or database write was introduced.
+
+Validation: production build, typecheck, lint, formatting and all 113 unit/static tests passed (exit 0). Authenticated synthetic local browser checks passed on desktop and mobile, verifying the exact account email, visibility, 11px size and no horizontal page overflow. The initial mobile check failed on an existing stale navigation assertion (12 expected versus 13 actual links); corrected the count and the mobile rerun passed (exit 0). No real account email was placed in fixtures or screenshots. Existing user changes were preserved; generated QA-only Next type-reference changes were restored.

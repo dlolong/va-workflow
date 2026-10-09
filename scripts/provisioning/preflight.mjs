@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export function assessTarget({
   userId,
+  workspaceId,
   workspaceName,
   timezone,
   user,
@@ -16,15 +17,17 @@ export function assessTarget({
   const blockers = [];
   if (!user || user.id !== userId)
     blockers.push("Target existing authentication account was not verified.");
-  const matches = workspaces.filter((w) => w.name === workspaceName);
+  const matches = workspaces.filter((w) =>
+    workspaceId ? w.id === workspaceId : w.name === workspaceName,
+  );
   if (matches.length !== 1)
     blockers.push(
-      "Exactly one matching workspace is required; explicit target resolution is needed.",
+      "Exactly one matching workspace is required; missing/inaccessible targets never fall back.",
     );
   const workspace = matches.length === 1 ? matches[0] : null;
   if (workspace) {
     if (workspace.archived_at) blockers.push("Target workspace is archived.");
-    if (workspace.timezone !== timezone)
+    if (timezone && workspace.timezone !== timezone)
       blockers.push("Workspace timezone differs from the requested timezone.");
     const targetMembership = memberships.find(
       (m) => m.workspace_id === workspace.id && m.user_id === userId,

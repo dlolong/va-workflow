@@ -5,9 +5,9 @@ import { Shell } from "@/components/shell";
 export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   if (!configured()) return <Setup />;
-  const { workspaces, profile } = await getWorkspaces();
+  const { workspaces, profile, user } = await getWorkspaces();
   return (
-    <Shell workspaces={workspaces} profile={profile}>
+    <Shell workspaces={workspaces} profile={profile} email={user.email}>
       {children}
     </Shell>
   );

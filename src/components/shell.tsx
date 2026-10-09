@@ -13,10 +13,12 @@ const navigationGroups = [
 export function Shell({
   workspaces,
   profile,
+  email,
   children,
 }: {
   workspaces: Workspace[];
   profile: Profile;
+  email?: string;
   children: React.ReactNode;
 }) {
   const menuRef = useRef<HTMLDialogElement>(null);
@@ -128,9 +130,16 @@ export function Shell({
               </option>
             ))}
           </select>
-          <div className="row">
-            <span className="hide-mobile muted" style={{ fontSize: 12 }}>
-              {profile.display_name}
+          <div className="row header-account">
+            <span className="header-identity muted">
+              <span className="hide-mobile" style={{ fontSize: 12 }}>
+                {profile.display_name}
+              </span>
+              {email && (
+                <span id="header-user-email" className="header-email" title={email}>
+                  {email}
+                </span>
+              )}
             </span>
             <span className="avatar" aria-hidden="true">
               {profile.display_name.slice(0, 2).toUpperCase()}

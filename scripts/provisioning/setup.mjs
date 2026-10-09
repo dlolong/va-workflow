@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { discover } from "./preflight.mjs";
 import { validateManifest } from "./manifest.mjs";
+import { assertFixedTarget } from "./target.mjs";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -22,6 +23,7 @@ if (
 try {
   const config = JSON.parse(readFileSync(configPath, "utf8"));
   const manifest = validateManifest(JSON.parse(readFileSync(config.manifestPath, "utf8")));
+  assertFixedTarget(config, manifest);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const project = new URL(url).hostname;
   const hash = createHash("sha256").update(JSON.stringify(manifest)).digest("hex");
@@ -30,7 +32,7 @@ try {
     blockers.push("Configured project does not match confirmed projectHost.");
   if (!["local", "staging"].includes(config.environment))
     blockers.push(
-      "AGENTS.md permits provisioning mutation tests/application only on an explicitly authorized disposable local/staging target; production is blocked.",
+      "This setup procedure requires a confirmed local/staging environment; production is blocked.",
     );
   if (!manifest.setupKey || !Array.isArray(manifest.items)) throw new Error("Invalid manifest");
   const keys = manifest.items.map((i) => i.key);
@@ -63,7 +65,14 @@ try {
     conflict: 0,
     status: "Ledger reuse cannot be established without authorized RPC preflight",
   };
+  let existingScheduleCount = null;
   if (workspace && workspace.id === config.workspaceId) {
+    const schedules = await db
+      .from("schedules")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspace.id);
+    if (schedules.error) blockers.push("Scoped schedule lookup failed.");
+    else existingScheduleCount = schedules.count;
     for (const [kind, table] of [
       ["process", "processes"],
       ["preparation", "runs"],
@@ -135,6 +144,9 @@ try {
     intendedMembership: "active va; no automatic ownership change",
     proposed: counts,
     candidateCounts,
+    existingScheduleCount,
+    notificationEffects:
+      "Only new setup-run in-app notices; the authorized RPC suppresses their new email jobs. No external messages or calendar actions. Existing schedules and jobs unchanged.",
     manifestHash: hash,
     unresolved: manifest.unresolved || [],
     deferredSchedules: manifest.schedules || [],

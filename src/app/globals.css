@@ -475,6 +475,22 @@ td .task-link:hover {
   font-size: 16px;
   background: transparent;
 }
+.header-account {
+  flex-wrap: nowrap;
+}
+.header-identity {
+  display: grid;
+  min-width: 0;
+  max-width: 240px;
+  text-align: right;
+}
+.header-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.4;
+}
 .avatar {
   width: 29px;
   height: 29px;
@@ -831,6 +847,9 @@ dialog::backdrop {
   }
   .topbar .avatar {
     display: none;
+  }
+  .header-identity {
+    max-width: 100px;
   }
   .mobile-menu .nav-link {
     min-height: 44px;

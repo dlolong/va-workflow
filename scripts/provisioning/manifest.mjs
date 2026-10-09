@@ -40,6 +40,13 @@ export function validateManifest(value) {
   const result = z
     .object({
       setupKey: key,
+      fixedTarget: z
+        .strictObject({
+          workspaceId: z.string().uuid(),
+          maryUserId: z.string().uuid(),
+          setupKey: key,
+        })
+        .optional(),
       items: z.array(itemSchema).min(1).max(100),
       unresolved: z.array(z.string()).optional(),
       schedules: z.array(z.unknown()).optional(),

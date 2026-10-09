@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import ts from "typescript";
 import { completionProblems } from "../../src/lib/domain.mjs";
 
@@ -65,17 +66,11 @@ test("catalog preserves three starters and appends exactly 20 unchanged operatio
     ["Daily marketplace mail review", "Invoice collection and handoff", "Weekly listing check"],
   );
   assert.deepEqual(TEMPLATES.slice(3), pack);
-  assert.deepEqual(
-    pack,
-    JSON.parse(
-      readFileSync(
-        new URL(
-          "../../public/VA_Relay_Operations_Template_Pack/VA_Relay_Operations_Templates.json",
-          import.meta.url,
-        ),
-        "utf8",
-      ),
-    ),
+  // Digest of the original JSON pack after JSON.parse/JSON.stringify. Preserve the
+  // exact-content regression without requiring a private source pack in public/.
+  assert.equal(
+    createHash("sha256").update(JSON.stringify(pack)).digest("hex"),
+    "f6e7f99bd4da0ab1c3db9894e7522e01585ec6526872eb924d186421e4dc5218",
   );
   assert.deepEqual((await import(catalogUrl + "#reload")).TEMPLATES, TEMPLATES);
   assert.deepEqual(EMPTY_WORKFLOW, {

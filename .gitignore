@@ -10,5 +10,6 @@ coverage/
 .DS_Store
 supabase/.temp/
 artifacts/
+.private/
 
 .next-qa/

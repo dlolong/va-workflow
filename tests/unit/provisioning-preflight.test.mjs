@@ -145,3 +145,91 @@ test("manifest rejects unsupported actions and malformed schema", () => {
   v.items[0].kind = "publish_process";
   assert.throws(() => validateManifest(v));
 });
+
+const { assertFixedTarget } = await import("../../scripts/provisioning/target.mjs");
+test("exact workspace ID wins over stale contextual name, never falls back", () => {
+  const v = input();
+  v.workspaceId = workspace.id;
+  v.workspaceName = "Stale label";
+  assert.equal(assessTarget(v).workspace.id, workspace.id);
+  v.workspaceId = "missing";
+  assert.equal(assessTarget(v).workspace, null);
+  assert.equal(assessTarget(v).readyForReview, false);
+});
+test("unknown requested timezone allows stored timezone discovery, not activation", () => {
+  const v = input();
+  v.timezone = null;
+  assert.equal(assessTarget(v).workspace.timezone, workspace.timezone);
+});
+const fixed = {
+  workspaceId: "10000000-0000-4000-8000-000000000001",
+  maryUserId: "10000000-0000-4000-8000-000000000002",
+  setupKey: "synthetic-fixed",
+};
+const fixedConfig = () => ({ ...fixed, fixedTarget: { ...fixed } });
+const fixedManifest = () => ({
+  ...manifest(),
+  setupKey: fixed.setupKey,
+  fixedTarget: { ...fixed },
+});
+test("private target contract survives actual manifest validation", () => {
+  assertFixedTarget(fixedConfig(), validateManifest(fixedManifest()), {}, fixed);
+});
+for (const field of ["workspaceId", "maryUserId", "setupKey"]) {
+  test(`fixed private entry rejects redirected ${field}`, () => {
+    const c = fixedConfig(),
+      m = fixedManifest();
+    c[field] = "another";
+    c.fixedTarget[field] = "another";
+    m.fixedTarget[field] = "another";
+    if (field === "setupKey") m.setupKey = "another";
+    assert.throws(() => assertFixedTarget(c, m, {}, fixed), /mismatch/);
+  });
+}
+test("fixed setup rejects environment redirects and missing manifest contract", () => {
+  for (const key of ["WORKSPACE_ID", "SETUP_WORKSPACE_ID"])
+    assert.throws(
+      () => assertFixedTarget(fixedConfig(), fixedManifest(), { [key]: "unrelated" }, fixed),
+      /environment/,
+    );
+  const m = fixedManifest();
+  delete m.fixedTarget;
+  assert.throws(() => assertFixedTarget(fixedConfig(), m, {}, fixed), /mismatch/);
+});
+test("exact ID lookup queries primary key and scopes child reads", async () => {
+  const calls = [];
+  const db = {
+    auth: { admin: { getUserById: async (id) => ({ data: { user: { id } } }) } },
+    from(table) {
+      const q = {
+        select() {
+          return q;
+        },
+        eq(k, v) {
+          calls.push([table, k, v]);
+          return q;
+        },
+        in() {
+          return q;
+        },
+        then(resolve) {
+          return Promise.resolve({
+            data: table === "workspaces" ? [workspace] : input().memberships,
+            error: null,
+          }).then(resolve);
+        },
+      };
+      return q;
+    },
+  };
+  const result = await discover(db, {
+    ...target,
+    workspaceId: workspace.id,
+    workspaceName: "Wrong label",
+  });
+  assert.equal(result.readyForReview, true);
+  assert.deepEqual(calls, [
+    ["workspaces", "id", workspace.id],
+    ["memberships", "workspace_id", workspace.id],
+  ]);
+});

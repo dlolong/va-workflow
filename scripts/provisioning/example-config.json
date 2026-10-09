@@ -1,0 +1,19 @@
+{
+  "workspaceId": "10000000-0000-4000-8000-000000000001",
+  "maryUserId": "10000000-0000-4000-8000-000000000002",
+  "ownerUserId": "10000000-0000-4000-8000-000000000003",
+  "setupActorUserId": "10000000-0000-4000-8000-000000000003",
+  "marioReviewerId": null,
+  "workspaceName": "Synthetic example only",
+  "timezone": null,
+  "projectHost": "example-project.supabase.co",
+  "environment": null,
+  "manifestPath": "artifacts/example/manifest.json",
+  "confirmedManifestHash": null,
+  "databaseQaVerified": false,
+  "fixedTarget": {
+    "workspaceId": "10000000-0000-4000-8000-000000000001",
+    "maryUserId": "10000000-0000-4000-8000-000000000002",
+    "setupKey": "synthetic-executive-assistance-v1"
+  }
+}

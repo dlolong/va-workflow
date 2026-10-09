@@ -220,12 +220,12 @@ test("two real sessions: permission, typed answers, upload retention, correction
   await page.locator("#request-permission-gate").click();
   await page.locator("#permission-reason-gate").fill("Synthetic QA permission request");
   await page.locator("#permission-request-gate-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   await reviewPage.goto(`/workspaces/${w}/runs/${run}`);
   await reviewPage.locator('button[id^="decide-permission-"]').click();
   await reviewPage.locator("#permission-note").fill("Approved for synthetic QA");
   await reviewPage.locator("#permission-decision-form-submit").click();
-  await expect(reviewPage.locator("dialog")).toHaveCount(0);
+  await expect(reviewPage.locator("dialog[open]")).toHaveCount(0);
   await page.reload();
   await page.locator("#run-step-gate summary").filter({ hasText: "Attach evidence" }).click();
   await page.locator("#evidence-file-gate").setInputFiles({
@@ -577,12 +577,15 @@ test("centered dialogs, grouped navigation and persistent header", async ({ page
   ).id;
   await login(page, owner);
   await page.goto(`/workspaces/${w}/today`);
+  await expect(page.locator("#header-user-email")).toHaveText(owner.email);
+  await expect(page.locator("#header-user-email")).toBeVisible();
+  await expect(page.locator("#header-user-email")).toHaveCSS("font-size", "11px");
   if (info.project.name === "mobile") {
     await page.locator("#main-menu-toggle").click();
     const menu = page.locator("#mobile-navigation");
     await expect(menu).toBeVisible();
     await expect(menu.getByText("Daily work", { exact: true })).toBeVisible();
-    await expect(menu.getByRole("link")).toHaveCount(12);
+    await expect(menu.getByRole("link")).toHaveCount(13);
     await page.keyboard.press("Escape");
     await expect(page.locator("#main-menu-toggle")).toBeFocused();
     await page.locator("#main-menu-toggle").click();
@@ -661,4 +664,59 @@ test("operations catalog reload and all template drafts preserve their settings"
     });
     expect(data?.published_version).toBeNull();
   }
+});
+
+test("provisioned drafts and preparation remain honest in VA workspace views", async ({ page }) => {
+  const owner = await actor("setup owner"),
+    va = await actor("setup VA");
+  const w = (
+    await cmd(owner, null, "create_workspace", {
+      name: "Synthetic setup workspace",
+      timezone: "Europe/Amsterdam",
+    })
+  ).id;
+  const invite = await cmd(owner, w, "invite_member", { email: va.email, role: "va" });
+  await cmd(va, null, "accept_invitation", { token: invite.token });
+  const items = [
+    {
+      key: "draft",
+      kind: "process",
+      content: { ...flow([step("scope")]), title: "Synthetic setup draft" },
+    },
+    {
+      key: "prepare",
+      kind: "preparation",
+      process_keys: ["draft"],
+      content: { ...flow([step("read")]), title: "Synthetic handover preparation" },
+    },
+    { key: "training", kind: "training", process_key: "draft", trainer_id: owner.id },
+  ];
+  const { error } = await owner.client.rpc("provision_workspace_setup", {
+    p_workspace: w,
+    p_target: va.id,
+    p_owner: owner.id,
+    p_setup_key: "synthetic-browser",
+    p_items: items,
+    p_apply: true,
+  });
+  expect(error).toBeNull();
+  await login(page, va);
+  await page.goto(`/workspaces/${w}/today`);
+  const preparation = page.getByRole("link", {
+    name: "Synthetic handover preparation",
+    exact: true,
+  });
+  await expect(preparation).toBeVisible();
+  await preparation.click();
+  await expect(page.locator("#run-step-read")).toBeVisible();
+  await expect(page.locator("#run-step-read input[type=checkbox]")).not.toBeChecked();
+  await page.goto(`/workspaces/${w}/processes`);
+  const draft = page.getByRole("row").filter({ hasText: "Synthetic setup draft" });
+  await expect(draft.locator(".badge")).toHaveText(/draft/i);
+  await expect(draft.getByRole("button", { name: "Publish draft" })).toHaveCount(0);
+  await expect(draft.getByRole("button", { name: "Start run" })).toHaveCount(0);
+  await page.goto(`/workspaces/${w}/training`);
+  await expect(page.getByRole("row").filter({ hasText: "Synthetic setup draft" })).toContainText(
+    /not started/i,
+  );
 });
