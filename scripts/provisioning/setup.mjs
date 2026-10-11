@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { discover } from "./preflight.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { assertFixedTarget } from "./target.mjs";
+import { inventory } from "./inventory.mjs";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -50,6 +51,11 @@ try {
   });
   blockers.push(...assessment.blockers);
   const workspace = assessment.workspace;
+  const existing =
+    workspace?.id === config.workspaceId
+      ? await inventory(db, config.workspaceId, manifest.items)
+      : null;
+  if (existing) blockers.push(...existing.blockers);
   if (
     !workspace ||
     workspace.id !== config.workspaceId ||
@@ -109,12 +115,10 @@ try {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const actor = await session.auth.getUser(process.env.SETUP_ACTOR_ACCESS_TOKEN);
-    if (
-      actor.error ||
-      actor.data.user?.id !== config.setupActorUserId ||
-      actor.data.user?.id === config.maryUserId
-    )
-      blockers.push("Separate setup actor identity not verified.");
+    if (actor.error || actor.data.user?.id !== config.setupActorUserId)
+      blockers.push(
+        "Setup actor identity not verified. An owner may set up their own assigned work.",
+      );
   }
   const payload = {
     p_workspace: config.workspaceId,
@@ -123,9 +127,13 @@ try {
     p_setup_key: manifest.setupKey,
     p_items: manifest.items,
     p_apply: false,
+    ...(manifest.previousSetupKeys ? { p_previous_setup_keys: manifest.previousSetupKeys } : {}),
   };
+  const rpc = manifest.previousSetupKeys
+    ? "reconcile_workspace_setup"
+    : "provision_workspace_setup";
   if (!blockers.length) {
-    const preview = await session.rpc("provision_workspace_setup", payload);
+    const preview = await session.rpc(rpc, payload);
     if (preview.error)
       blockers.push(
         "Provisioning RPC preflight failed: verify migration/permissions on disposable staging.",
@@ -141,7 +149,8 @@ try {
     project,
     environment: config.environment || "unconfirmed",
     workspace,
-    intendedMembership: "active va; no automatic ownership change",
+    existing,
+    intendedMembership: "active va or verified workspace owner; preserve current role",
     proposed: counts,
     candidateCounts,
     existingScheduleCount,
@@ -152,6 +161,22 @@ try {
     deferredSchedules: manifest.schedules || [],
     blockers,
     databasePreflight: plan,
+    counts: plan
+      ? {
+          create: plan.items.filter((i) => i.state === "create").length,
+          update: plan.items.filter((i) => i.state === "update_draft").length,
+          reuse: plan.items.filter((i) => i.state === "reuse_preserved").length,
+          deferred: plan.items.filter((i) => i.state === "deferred").length,
+          conflicted: plan.conflicts,
+        }
+      : null,
+    actualCounts: {
+      created: 0,
+      updated: 0,
+      reused: 0,
+      deferred: blockers.length ? manifest.items.length : 0,
+      failed: 0,
+    },
     applied: false,
   };
   if (apply) {
@@ -166,16 +191,24 @@ try {
       console.log(JSON.stringify(report, null, 2));
       process.exitCode = 2;
     } else {
-      const result = await session.rpc("provision_workspace_setup", { ...payload, p_apply: true });
+      const result = await session.rpc(rpc, { ...payload, p_apply: true });
       if (result.error)
         throw new Error(
           "Apply RPC failed; transaction is atomic. If response was interrupted, rerun dry run to inspect durable ledger.",
         );
-      const verified = await session.rpc("provision_workspace_setup", payload);
+      report.actualCounts = {
+        created: result.data.items.filter((i) => i.state === "create").length,
+        updated: result.data.items.filter((i) => i.state === "update_draft").length,
+        reused: result.data.items.filter((i) => i.state === "reuse_preserved").length,
+        deferred: result.data.items.filter((i) => i.state === "deferred").length,
+        failed: 0,
+      };
+      const verified = await session.rpc(rpc, payload);
       if (
         verified.error ||
         verified.data.conflicts ||
-        verified.data.items.some((i) => i.state !== "reuse_preserved")
+        verified.data.items.length !== manifest.items.length ||
+        verified.data.items.some((i) => !["reuse_preserved", "deferred"].includes(i.state))
       ) {
         report.result = "PARTIALLY APPLIED";
         report.applied = true;
@@ -184,7 +217,8 @@ try {
         );
         process.exitCode = 2;
       } else {
-        report.result = "APPLIED AND VERIFIED";
+        report.result = verified.data.deferred ? "PARTIALLY APPLIED" : "APPLIED AND VERIFIED";
+        if (verified.data.deferred) process.exitCode = 2;
         report.applied = true;
         report.databasePreflight = verified.data;
         report.browserVerified = false;

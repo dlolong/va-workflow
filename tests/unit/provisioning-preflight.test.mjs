@@ -51,7 +51,7 @@ for (const [name, mutate] of [
     },
   ],
   [
-    "target owner conflict",
+    "unverified target owner",
     (v) => {
       v.workspaces = [{ ...workspace, owner_id: target.userId }];
       v.memberships[0].role = "owner";
@@ -90,6 +90,20 @@ test("failed remote lookup cannot produce a successful assessment", async () => 
     ),
     /lookup failed/,
   );
+});
+
+test("verified active owner can be the work assignee without changing roles", () => {
+  const v = input();
+  v.userId = workspace.owner_id;
+  v.user = { id: workspace.owner_id };
+  assert.equal(assessTarget(v).readyForReview, true);
+  v.memberships[1].active = false;
+  assert.equal(assessTarget(v).readyForReview, false);
+});
+test("an owner membership that does not match the actual workspace owner is rejected", () => {
+  const v = input();
+  v.memberships[0].role = "owner";
+  assert.equal(assessTarget(v).readyForReview, false);
 });
 
 const { validateManifest } = await import("../../scripts/provisioning/manifest.mjs");
@@ -232,4 +246,27 @@ test("exact ID lookup queries primary key and scopes child reads", async () => {
     ["workspaces", "id", workspace.id],
     ["memberships", "workspace_id", workspace.id],
   ]);
+});
+
+test("upgrade manifest retains previous namespaces and rejects cycles, duplicates and unsupported training", () => {
+  const value = manifest();
+  value.previousSetupKeys = ["synthetic-v1"];
+  assert.deepEqual(validateManifest(value).previousSetupKeys, ["synthetic-v1"]);
+  for (const previous of [[], ["synthetic"], ["synthetic-v1", "synthetic-v1"]]) {
+    assert.throws(() => validateManifest({ ...value, previousSetupKeys: previous }));
+  }
+  assert.throws(() =>
+    validateManifest({
+      ...value,
+      items: [
+        ...value.items,
+        {
+          key: "training",
+          kind: "training",
+          process_key: "sop",
+          trainer_id: "10000000-0000-4000-8000-000000000003",
+        },
+      ],
+    }),
+  );
 });

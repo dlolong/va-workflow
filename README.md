@@ -16,7 +16,7 @@ This is source code with implemented application flows, not a hosted service or 
 | Execution         | One-off requests and published-process runs, source/reference, required responses, permitted N/A with reasons, explicit save/resume, optimistic locking              |
 | Recurrence        | Daily, weekdays, weekly and monthly; named timezones, ahead-of-deadline generation, pause/resume, unique occurrences                                                 |
 | Evidence          | Private 10 MB uploads, before/after labels, pending vs attached state, retryable uploads, short-lived downloads                                                      |
-| Decisions         | Pre-action permission gates; separate final review; request changes and resubmit; no self-review                                                                     |
+| Decisions         | Pre-action permission gates; separate final review; request changes and resubmit; owner-only self-review                                                             |
 | Exceptions        | Blocking/nonblocking issues, recommended next action, responsible person, follow-up dates, waiting status separate from deadline status                              |
 | Operations        | My Day, deadline register, attention queue, comments, in-app notifications, activity history, basic handovers/sign-off                                               |
 | Reporting         | Whole-workspace weekly counts, copyable summary, paginated work list, CSV and JSON exports                                                                           |

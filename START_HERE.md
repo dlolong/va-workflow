@@ -50,8 +50,12 @@ In your new project, run each complete file, in this order:
 5. `supabase/migrations/202610070001_validation.sql`
 6. `supabase/migrations/202610070002_command_validation.sql`
 7. `supabase/migrations/202610070003_email_leases.sql`
+8. `supabase/migrations/202610070004_provisioning.sql`
+9. `supabase/migrations/202610090001_provisioning_reconciliation.sql`
+10. `supabase/migrations/202610090002_owner_execution_provisioning.sql`
+11. `supabase/migrations/202610090003_owner_self_review.sql`
 
-For an existing installation with the first four already applied, apply only the three forward migrations. Deploy the updated worker with migration 7: its email acknowledgement RPC now requires the claimed attempt number. Do not rewrite or rerun applied initial migrations.
+For an existing installation, apply only the forward migrations not already recorded as applied, in filename order. Deploy owner self-review UI together with migration 11; older databases will reject owner self-review. Deploy the updated worker with migration 7: its email acknowledgement RPC now requires the claimed attempt number. Do not rewrite or rerun applied initial migrations.
 
 Each file contains its own transaction. Stop on the first error; do not continue as though it succeeded. These initial migrations are not designed to be rerun repeatedly over existing tables. Record which files were applied. Do not mix manually applied initial migrations with an un-reconciled CLI migration history.
 
@@ -113,14 +117,14 @@ The development and build scripts explicitly use Webpack. This supports installa
 
 1. Create an account and confirm its email when your Supabase settings require it.
 2. Create a client workspace. Its creator becomes its owner. Choose the **client's named timezone**, such as `Europe/Amsterdam` or `Asia/Manila`.
-3. In **Processes & SOPs**, use a starter template or paste checklist lines. Review its instructions and save a draft.
+3. In **Processes & SOPs**, choose **Create process** or expand **Browse starter templates**. Review its instructions and save a draft. Saved processes appear first; search by title/description and filter drafts, published, unpublished changes or archived records.
 4. Publish the draft. Only owners/managers can publish. VAs can author drafts, but drafts do not replace published instructions automatically.
 5. In **Team & access**, create an invitation for a second account. Copy the link and share it with that person. They sign in with the invited email and accept.
 6. Start a run, assign the VA, and select a different reviewer when the process requires approval/review.
 7. Sign in as the VA, save answers, attach any required evidence, and submit.
 8. As reviewer, request a correction or accept the submission. Verify that the VA can correct and resubmit.
 
-For a first solo check, create a quick one-off task with no required reviewer. Do not enable self-review to get around a two-account review test.
+Owners may select themselves as both Assignee and Reviewer, or delegate to another member. Permission requests, decisions and final reviews still require explicit saved actions. Managers, clients and VAs cannot review their own work. Use separate accounts as well to verify delegation; an owner solo check does not replace the two-account test.
 
 ## 6. Optional: unattended schedules and reminders
 

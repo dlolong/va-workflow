@@ -27,6 +27,40 @@ export function Shell({
   const [unsaved, setUnsaved] = useState(false);
   const [signOutError, setSignOutError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const [copyingToken, setCopyingToken] = useState(false);
+  const [tokenMessage, setTokenMessage] = useState("");
+  const [tokenError, setTokenError] = useState(false);
+  const copyActorToken = async () => {
+    if (process.env.NODE_ENV !== "development" || copyingToken) return;
+    setCopyingToken(true);
+    setTokenMessage("");
+    setTokenError(false);
+    try {
+      const db = browserSupabase();
+      // getSession refreshes expired sessions; getUser verifies this exact token with Auth.
+      const session = await db.auth.getSession();
+      const token = session.data.session?.access_token;
+      if (session.error || !token) throw new Error("Session unavailable");
+      const user = await db.auth.getUser(token);
+      if (user.error || user.data.user?.id !== profile.id) throw new Error("Session mismatch");
+      try {
+        await navigator.clipboard.writeText(token);
+        setTokenMessage(
+          "Actor token copied. Paste it into SETUP_ACTOR_ACCESS_TOKEN in .env.local.",
+        );
+      } catch {
+        setTokenError(true);
+        setTokenMessage("Could not copy. Allow clipboard access and retry on localhost or HTTPS.");
+      }
+    } catch {
+      setTokenError(true);
+      setTokenMessage(
+        "Could not verify your session. Sign in again, then retry copying the token.",
+      );
+    } finally {
+      setCopyingToken(false);
+    }
+  };
   useEffect(() => {
     const listener = (event: Event) => setUnsaved(Boolean((event as CustomEvent<boolean>).detail));
     window.addEventListener("va-relay:unsaved", listener);
@@ -144,6 +178,20 @@ export function Shell({
             <span className="avatar" aria-hidden="true">
               {profile.display_name.slice(0, 2).toUpperCase()}
             </span>
+            {process.env.NODE_ENV === "development" && (
+              <button
+                id="copy-actor-token"
+                className="btn small"
+                type="button"
+                title="Copy your signed-in access token for local setup"
+                aria-label="Copy actor token (development only)"
+                aria-busy={copyingToken}
+                disabled={copyingToken || signingOut}
+                onClick={copyActorToken}
+              >
+                Dev token
+              </button>
+            )}
             <button
               id="sign-out"
               className="btn small"
@@ -219,6 +267,15 @@ export function Shell({
           <div className="mobile-menu-body">{navigation(true)}</div>
         </dialog>
         <main id="main-content" className="content">
+          {process.env.NODE_ENV === "development" && tokenMessage && (
+            <div
+              id="actor-token-status"
+              className={`notice ${tokenError ? "error" : ""}`}
+              role={tokenError ? "alert" : "status"}
+            >
+              {tokenMessage}
+            </div>
+          )}
           {signOutError && (
             <div className="notice error" role="alert">
               {signOutError}

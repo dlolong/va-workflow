@@ -95,3 +95,34 @@ for (const table of ["processes", "runs"]) {
 console.log(
   "PASS real concurrent provisioning: exactly one process and one preparation run. Synthetic local fixtures retained; not actual-user browser verification.",
 );
+
+const upgrade = {
+  ...payload,
+  p_setup_key: "synthetic-concurrency-v2",
+  p_previous_setup_keys: [payload.p_setup_key],
+  p_items: payload.p_items.map((i) =>
+    i.kind === "process"
+      ? { ...i, content: { ...i.content, sop: "Synthetic upgraded instructions" } }
+      : i,
+  ),
+};
+const upgrades = await Promise.all([
+  owner.db.rpc("reconcile_workspace_setup", upgrade),
+  owner.db.rpc("reconcile_workspace_setup", upgrade),
+]);
+for (const r of upgrades) assert.equal(r.error, null);
+assert.equal(
+  upgrades.flatMap((r) => r.data.items).filter((i) => i.state === "update_draft").length,
+  1,
+);
+const verified = await owner.db.rpc("reconcile_workspace_setup", { ...upgrade, p_apply: false });
+assert.equal(verified.error, null);
+assert.ok(verified.data.items.every((i) => i.state === "reuse_preserved"));
+for (const table of ["processes", "runs"]) {
+  const r = await owner.db.from(table).select("id", { count: "exact" }).eq("workspace_id", w);
+  assert.equal(r.error, null);
+  assert.equal(r.count, 1);
+}
+console.log(
+  "PASS concurrent v1-to-v2 reconciliation: one draft update, same process and task, no duplicates.",
+);

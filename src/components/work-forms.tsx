@@ -136,6 +136,11 @@ export function TaskForm({
                 </option>
               ))}
           </select>
+          {data.role === "owner" && (
+            <span className="hint">
+              As owner, you can do the work yourself or assign it to a team member.
+            </span>
+          )}
         </Field>
         <Field label="Reviewer">
           <MemberSelect
@@ -144,7 +149,9 @@ export function TaskForm({
             required={false}
             reviewer
             exclude={assignee}
+            ownerId={data.workspace.owner_id}
           />
+          <span className="hint">The workspace owner can also review their own work.</span>
         </Field>
         <Field label={`Due date · ${data.workspace.timezone}`}>
           <input id="task-due" name="due_at" type="datetime-local" />

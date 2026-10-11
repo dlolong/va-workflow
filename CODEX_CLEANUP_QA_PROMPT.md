@@ -46,7 +46,7 @@ Test owner, manager, client-reviewer, VA, removed user, unauthenticated user and
 - No direct authenticated business-table writes; no anonymous business reads; fixed security-definer search paths; no accidental execution grants on private or worker functions.
 - VA SOP drafting is allowed; publishing remains manager/owner-only. Published snapshots are immutable for existing runs.
 - Required answers including numeric `0`, boolean `false` for yes/no, whitespace-only text, permitted N/A with reason, and configured evidence.
-- Before-action approval must precede the protected step. Submission and acceptance are distinct. Self-review fails. Changes requested → correction → resubmission works. Closed/cancelled runs cannot receive unauthorized writes or stale pending approvals.
+- Before-action approval must precede the protected step. Submission and acceptance are distinct. Self-review fails for non-owners. The verified workspace owner may explicitly self-approve and self-review; verify audit attribution and required gate/evidence checks still hold. Changes requested → correction → resubmission works. Closed/cancelled runs cannot receive unauthorized writes or stale pending approvals.
 - Waiting/blocked states preserve the business deadline and record who owns the next action. Issues have a resolution/owner/follow-up and can block submission.
 - Idempotent request retries, different-payload request-ID reuse, optimistic stale versions and actual concurrent saves/scheduler invocations. The existing sequential recurrence test is not proof of concurrency safety.
 - Workspace archive/restore, process archive/pause/resume, invalid required reviewer after publication, offboarding/reassignment and old invitation authority.

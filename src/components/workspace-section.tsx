@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SECTIONS } from "@/lib/config";
-import { TEMPLATES } from "@/lib/templates";
 import { useCommand } from "@/lib/client-api";
 import { displayStatus, hasWritableRole, isOverdue } from "@/lib/domain.mjs";
 import { formatTime } from "@/lib/time";
@@ -20,8 +19,8 @@ import {
   memberName,
   text,
 } from "./ui";
-import { ProcessForm, ScheduleForm, TaskForm, TrainingForm } from "./work-forms";
-import { WorkflowRead } from "./workflow-read";
+import { TaskForm, TrainingForm } from "./work-forms";
+import { ProcessesSection } from "./processes-section";
 type Stats = Record<string, number | string | null>;
 export function RunTable({ runs, data }: { runs: Run[]; data: DataBundle }) {
   if (!runs.length)
@@ -111,7 +110,6 @@ export function WorkspaceSection({
   const [inviteLink, setInviteLink] = useState("");
   const managerRole = hasWritableRole(data.role);
   const manage = managerRole && !data.workspace.archived_at;
-  const canDraft = !data.workspace.archived_at && (manage || data.role === "va");
   const title = SECTIONS.find((s) => s[0] === section)?.[1] || "Workspace";
   const base = `/workspaces/${data.workspace.id}`;
   const action = async (name: string, payload: Record<string, unknown>, success = "Saved.") => {
@@ -331,280 +329,7 @@ export function WorkspaceSection({
             )}
         </>
       )}
-      {section === "processes" && (
-        <>
-          {canDraft && (
-            <div className="toolbar">
-              <div className="row">
-                <Modal
-                  id="new-process"
-                  label="+ Create process"
-                  title="Process and SOP builder"
-                  wide
-                >
-                  {(close) => <ProcessForm workspaceId={data.workspace.id} close={close} />}
-                </Modal>
-                {manage && (
-                  <Modal
-                    id="new-schedule"
-                    label="+ Recurring schedule"
-                    title="Set a recurring deadline"
-                  >
-                    {(close) => <ScheduleForm data={data} close={close} />}
-                  </Modal>
-                )}
-              </div>
-              {manage && (
-                <button
-                  id="generate-due-work"
-                  className="btn"
-                  disabled={busy}
-                  onClick={() =>
-                    action(
-                      "generate_schedules",
-                      {},
-                      "Due schedules checked. Already-created occurrences were not duplicated.",
-                    )
-                  }
-                >
-                  Generate due work
-                </button>
-              )}
-            </div>
-          )}
-          {canDraft && (
-            <section className="panel pad stack">
-              <div>
-                <h2>Start with a template</h2>
-                <p className="hint">
-                  Generic starting points. Review client-specific instructions before publishing.
-                </p>
-              </div>
-              <div className="grid-3">
-                {TEMPLATES.map((flow, i) => (
-                  <div key={flow.title} className="stack-sm">
-                    <h3>{flow.title}</h3>
-                    <p className="hint">{flow.description}</p>
-                    <Modal
-                      id={`template-${i}`}
-                      label="Use template"
-                      title="Review and save template"
-                      wide
-                    >
-                      {(close) => (
-                        <ProcessForm workspaceId={data.workspace.id} initial={flow} close={close} />
-                      )}
-                    </Modal>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          <section className="panel">
-            <div className="panel-heading">
-              <h2>Processes & SOPs</h2>
-              <span className="hint">
-                VAs may draft; only managers publish. Published versions remain unchanged until
-                then.
-              </span>
-            </div>
-            {data.processes.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Process</th>
-                      <th>Version</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.processes.map((p) => (
-                      <tr key={p.id}>
-                        <td>
-                          <strong>{p.title}</strong>
-                          <p>{p.published_content?.description || p.draft.description}</p>
-                          {p.archived && <Badge status="archived" />}
-                        </td>
-                        <td>
-                          {p.published_version ? (
-                            <Badge status={`published v${p.published_version}`} />
-                          ) : (
-                            <Badge status="draft" />
-                          )}
-                        </td>
-                        <td>
-                          <div className="row">
-                            {p.published_content && (
-                              <Modal
-                                id={`read-process-${p.id}`}
-                                label="View SOP"
-                                title={`${p.title} · Published v${p.published_version}`}
-                                wide
-                              >
-                                {() => <WorkflowRead flow={p.published_content!} />}
-                              </Modal>
-                            )}
-                            {!data.workspace.archived_at && !p.archived && p.published_version && (
-                              <Modal
-                                id={`start-process-${p.id}`}
-                                label="Start run"
-                                title="Start a checklist run"
-                              >
-                                {(close) => <TaskForm data={data} close={close} processId={p.id} />}
-                              </Modal>
-                            )}
-                            {canDraft && (
-                              <>
-                                <Modal
-                                  id={`edit-process-${p.id}`}
-                                  label="Edit draft"
-                                  title="Edit process draft"
-                                  wide
-                                >
-                                  {(close) => (
-                                    <ProcessForm
-                                      workspaceId={data.workspace.id}
-                                      close={close}
-                                      initial={p.draft}
-                                      processId={p.id}
-                                    />
-                                  )}
-                                </Modal>
-                                <Modal
-                                  id={`duplicate-process-${p.id}`}
-                                  label="Duplicate"
-                                  title="Duplicate as a new process"
-                                  wide
-                                >
-                                  {(close) => (
-                                    <ProcessForm
-                                      workspaceId={data.workspace.id}
-                                      close={close}
-                                      initial={{ ...p.draft, title: `${p.title} (copy)` }}
-                                    />
-                                  )}
-                                </Modal>
-                              </>
-                            )}
-                            {manage && (
-                              <>
-                                {!p.archived && (
-                                  <button
-                                    id={`publish-process-${p.id}`}
-                                    className="btn small"
-                                    disabled={busy}
-                                    onClick={() =>
-                                      action(
-                                        "publish_process",
-                                        { id: p.id },
-                                        "New SOP version published. Existing runs are unchanged.",
-                                      )
-                                    }
-                                  >
-                                    Publish draft
-                                  </button>
-                                )}
-                                <button
-                                  id={`archive-process-${p.id}`}
-                                  className="btn small"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    action(
-                                      "archive_process",
-                                      { id: p.id, archived: !p.archived },
-                                      p.archived
-                                        ? "Process restored. Resume schedules separately."
-                                        : "Process archived and schedules paused.",
-                                    )
-                                  }
-                                >
-                                  {p.archived ? "Restore" : "Archive"}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <Empty title="No processes yet">
-                Use a starter template or create a checklist from scratch.
-              </Empty>
-            )}
-          </section>
-          <section className="panel">
-            <div className="panel-heading">
-              <h2>Recurring schedules</h2>
-              <p>Fixed deadlines, independent of whether the previous run is finished.</p>
-            </div>
-            {data.schedules.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Process / assignee</th>
-                      <th>Recurrence</th>
-                      <th>Next deadline to generate</th>
-                      <th>Controls</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.schedules.map((s) => (
-                      <tr key={s.id}>
-                        <td>
-                          {processTitle(s.process_id)}
-                          <p>{memberName(data.members, s.assignee_id)}</p>
-                        </td>
-                        <td>
-                          <Badge status={s.active ? s.frequency : "paused"} />
-                          <p>
-                            {s.local_time} · {s.timezone}
-                          </p>
-                        </td>
-                        <td>
-                          {formatTime(s.next_due_at, s.timezone)}
-                          <p>Create {s.lead_minutes} minutes beforehand</p>
-                        </td>
-                        <td>
-                          {manage && (
-                            <div className="row">
-                              <Modal
-                                id={`edit-schedule-${s.id}`}
-                                label="Edit"
-                                title="Edit recurring schedule"
-                              >
-                                {(close) => <ScheduleForm data={data} close={close} initial={s} />}
-                              </Modal>
-                              <button
-                                id={`toggle-schedule-${s.id}`}
-                                className="btn small"
-                                disabled={busy}
-                                onClick={() =>
-                                  action("toggle_schedule", { id: s.id, active: !s.active })
-                                }
-                              >
-                                {s.active ? "Pause" : "Resume"}
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <Empty title="No recurring schedules">
-                Publish a process, then add its recurring deadline.
-              </Empty>
-            )}
-          </section>
-        </>
-      )}
+      {section === "processes" && <ProcessesSection data={data} />}
       {section === "training" && (
         <>
           {manage && (
@@ -866,9 +591,9 @@ export function WorkspaceSection({
                                       <textarea id="offboard-note" name="note" required />
                                     </Field>
                                     <p className="hint">
-                                      The database rejects combinations that would create
-                                      self-review. Existing short-lived file links may remain valid
-                                      for up to 60 seconds.
+                                      Only the workspace owner may take over both execution and
+                                      review of the same work. Existing short-lived file links may
+                                      remain valid for up to 60 seconds.
                                     </p>
                                   </Form>
                                 )}

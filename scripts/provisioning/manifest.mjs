@@ -40,6 +40,7 @@ export function validateManifest(value) {
   const result = z
     .object({
       setupKey: key,
+      previousSetupKeys: z.array(key).min(1).max(10).optional(),
       fixedTarget: z
         .strictObject({
           workspaceId: z.string().uuid(),
@@ -53,6 +54,14 @@ export function validateManifest(value) {
     })
     .parse(value);
   const keys = result.items.map((item) => item.key);
+  if (
+    result.previousSetupKeys &&
+    (result.previousSetupKeys.includes(result.setupKey) ||
+      new Set(result.previousSetupKeys).size !== result.previousSetupKeys.length)
+  )
+    throw new Error("Previous namespaces must be distinct and exclude the current namespace");
+  if (result.previousSetupKeys && result.items.some((item) => item.kind === "training"))
+    throw new Error("Reconciliation supports process drafts and preparation only");
   if (new Set(keys).size !== keys.length) throw new Error("Duplicate setup keys");
   const processKeys = new Set(result.items.filter((i) => i.kind === "process").map((i) => i.key));
   for (const item of result.items)

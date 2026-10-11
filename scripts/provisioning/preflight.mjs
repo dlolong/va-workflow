@@ -32,11 +32,11 @@ export function assessTarget({
     const targetMembership = memberships.find(
       (m) => m.workspace_id === workspace.id && m.user_id === userId,
     );
-    if (!targetMembership?.active || targetMembership.role !== "va")
-      blockers.push("Target must have verified active VA membership; no role change is inferred.");
-    if (workspace.owner_id === userId)
+    const isOwner = workspace.owner_id === userId && targetMembership?.role === "owner";
+    const isVa = workspace.owner_id !== userId && targetMembership?.role === "va";
+    if (!targetMembership?.active || (!isOwner && !isVa))
       blockers.push(
-        "Target user owns the workspace. A separate authorized owner and explicit ownership resolution are required.",
+        "Target must be an active VA or the verified workspace owner; no role change is inferred.",
       );
     const ownerMembership = memberships.find(
       (m) => m.workspace_id === workspace.id && m.user_id === workspace.owner_id,

@@ -8,6 +8,8 @@ Client-level isolation means all active members of a workspace can inspect its o
 
 Owners/managers are trusted to configure SOPs and authority boundaries; VAs can draft but cannot publish. A platform deployer holding the database credentials/service-role key can bypass ordinary RLS and must be treated as privileged infrastructure administration.
 
+The verified workspace owner can execute, approve and review their own tasks, or assign work to another active member. This owner-only exception is enforced against both `workspaces.owner_id` and active membership on every decision. It is not independent approval: the audit records the same actor and marks self-review/self-approval. It does not extend to managers, clients or VAs, and it does not bypass required answers, evidence, permission gates, archived-workspace checks or RLS.
+
 ## Before using real client data
 
 Run live tests with at least owner, VA, client-reviewer and unrelated-client users. Test every tenant-owned table, direct RPC misuse, forged run/workspace IDs, private file paths, expired/revoked invites, stale versions, offboarding, pre-action gates, self-review and post-completion writes. Include authenticated Storage REST tests, not only SQL helper tests. Verify SSR responses/cookies are not publicly cached. Keep security-definer function search paths fixed and grants explicit.

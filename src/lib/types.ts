@@ -37,6 +37,7 @@ export type Workflow = {
 };
 export type Workspace = {
   id: string;
+  owner_id: string;
   name: string;
   timezone: string;
   created_at: string;

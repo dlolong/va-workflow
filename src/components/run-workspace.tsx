@@ -225,11 +225,18 @@ export function RunWorkspace({ data }: { data: RunBundle }) {
         </div>
       )}
       {run.status === "for_review" &&
-        run.assignee_id !== data.userId &&
+        (run.assignee_id !== data.userId ||
+          (data.role === "owner" && data.workspace.owner_id === data.userId)) &&
         (run.reviewer_id === data.userId || manage) &&
         !data.workspace.archived_at && (
           <section className="panel pad stack">
             <h2>Review submitted work</h2>
+            {run.assignee_id === data.userId && (
+              <p className="hint">
+                You are reviewing your own work as workspace owner. Your decision will be recorded
+                in the activity history.
+              </p>
+            )}
             <Form
               id="review-run-form"
               busy={busy}
@@ -671,8 +678,8 @@ export function RunWorkspace({ data }: { data: RunBundle }) {
                   <p className="hint">{a.reason}</p>
                   {a.decision_note && <p className="hint">Decision: {a.decision_note}</p>}
                   {a.status === "pending" &&
-                    data.userId !== run.assignee_id &&
-                    data.userId !== a.requested_by &&
+                    ((data.userId !== run.assignee_id && data.userId !== a.requested_by) ||
+                      (data.role === "owner" && data.workspace.owner_id === data.userId)) &&
                     (a.reviewer_id === data.userId || manage) &&
                     !data.workspace.archived_at && (
                       <Modal

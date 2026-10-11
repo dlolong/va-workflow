@@ -51,6 +51,7 @@ export function MemberSelect({
   required = true,
   reviewer = false,
   exclude,
+  ownerId,
   disabled = false,
 }: {
   members: Member[];
@@ -59,6 +60,7 @@ export function MemberSelect({
   required?: boolean;
   reviewer?: boolean;
   exclude?: string;
+  ownerId?: string;
   disabled?: boolean;
 }) {
   return (
@@ -74,7 +76,7 @@ export function MemberSelect({
         .filter(
           (m) =>
             m.active &&
-            m.user_id !== exclude &&
+            (m.user_id !== exclude || (m.user_id === ownerId && m.role === "owner")) &&
             (!reviewer || ["owner", "manager", "client"].includes(m.role)),
         )
         .map((m) => (

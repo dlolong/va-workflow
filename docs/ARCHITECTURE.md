@@ -33,7 +33,7 @@ Scheduled occurrences use `(schedule_id, occurrence_at)` uniqueness. Generation 
 
 ## Work lifecycle
 
-`not_started → in_progress → for_review → completed` when review is required; non-review work completes after successful database validation. A reviewer may request changes, which allows correction/resubmission. Blocking/waiting states retain deadlines. Cancellation/reopening requires manager authority; cancellation rejects pending permission requests without granting authority. Self-review is prohibited.
+`not_started → in_progress → for_review → completed` when review is required; non-review work completes after successful database validation. A reviewer may request changes, which allows correction/resubmission. Blocking/waiting states retain deadlines. Cancellation/reopening requires manager authority; cancellation rejects pending permission requests without granting authority. Self-review and self-approval are allowed only for the current workspace owner with an active Owner membership, as explicitly requested. Other roles still require independent review. Decisions retain the actual actor and explicit self-review/self-approval audit flags. Permission gates and final review remain separate saved actions.
 
 Before-action permissions are stored separately from final review. An approved gate authorizes the stated action in that run. Required answers, configured N/A, proof requirements and unresolved blocking issues are checked again in SQL at submission and acceptance. A URL or screenshot remains user-supplied evidence, not an external-system confirmation.
 

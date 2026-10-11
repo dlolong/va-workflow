@@ -86,7 +86,7 @@ test("workspace, draft/publish, modal focus, quick task, archive and screenshots
   const owner = await actor("owner");
   await login(page, owner);
   await page.locator("#create-workspace").click();
-  await expect(page.locator("dialog")).toBeVisible();
+  await expect(page.locator("dialog[open]")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#create-workspace")).toBeFocused();
   await page.locator("#create-workspace").click();
@@ -97,13 +97,13 @@ test("workspace, draft/publish, modal focus, quick task, archive and screenshots
   await page.goto(`/workspaces/${w}/processes`);
   await page.locator("#new-process").click();
   await expect(page.locator("#process-form")).toHaveCSS("display", "grid");
-  expect(await page.locator("dialog").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
-    true,
-  );
+  expect(
+    await page.locator("dialog[open]").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  ).toBe(true);
   await page.locator("#process-title").fill("QA published SOP");
   await page.locator('input[id^="step-"][id$="-title"]').fill("Check result");
   await page.locator("#process-form-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   await page.locator('button[id^="publish-process-"]').click();
   await expect(
     page.getByText("New SOP version published. Existing runs are unchanged."),
@@ -336,14 +336,14 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await page.goto(`/workspaces/${w}/processes`);
   await page.locator("#new-schedule").click();
   await expect(page.locator("#schedule-form")).toHaveCSS("display", "grid");
-  expect(await page.locator("dialog").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(
-    true,
-  );
+  expect(
+    await page.locator("dialog[open]").evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  ).toBe(true);
   await page.locator("#schedule-process").selectOption(proc);
   await page.locator("dialog #assignee_id").selectOption(member.id);
   await page.locator("#schedule-frequency").selectOption("daily");
   await page.locator("#schedule-form-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   await page.locator("#generate-due-work").click();
   await expect(
     page.getByText("Due schedules checked. Already-created occurrences were not duplicated."),
@@ -359,7 +359,7 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await memberPage.locator("dialog #owner_id").selectOption(member.id);
   await memberPage.locator("#issue-follow-up").fill("2026-10-08T10:00");
   await memberPage.locator("#issue-form-submit").click();
-  await expect(memberPage.locator("dialog")).toHaveCount(0);
+  await expect(memberPage.locator("dialog[open]")).toHaveCount(0);
   await memberPage.locator("#change-work-status").click();
   await memberPage.locator("#work-status").selectOption("waiting_on_client");
   await memberPage.locator("#work-status-reason").fill("Awaiting synthetic input");
@@ -367,14 +367,14 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await memberPage.locator("dialog #follow_up_owner_id").selectOption(member.id);
   await memberPage.locator("#work-follow-up-date").fill("2026-10-08T10:00");
   await memberPage.locator("#work-status-form-submit").click();
-  await expect(memberPage.locator("dialog")).toHaveCount(0);
+  await expect(memberPage.locator("dialog[open]")).toHaveCount(0);
   await memberPage.locator("#comment-body").fill("Synthetic QA discussion");
   await memberPage.locator("#comment-form-submit").click();
   await expect(memberPage.getByText("Comment posted.")).toBeVisible();
   await memberPage.locator('button[id^="resolve-issue-"]').click();
   await memberPage.locator("#issue-resolution").fill("Synthetic result verified");
   await memberPage.locator("#resolve-issue-form-submit").click();
-  await expect(memberPage.locator("dialog")).toHaveCount(0);
+  await expect(memberPage.locator("dialog[open]")).toHaveCount(0);
   await page.goto(`/workspaces/${w}/training`);
   await page.locator("#add-handover").click();
   await page.locator("#training-process").selectOption(proc);
@@ -383,14 +383,14 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await page.locator("#training-stage").selectOption("owned");
   await page.locator("#training-note").fill("Independent synthetic checklist verified");
   await page.locator("#training-form-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   await expect(page.getByText("owned", { exact: true })).toBeVisible();
   await page.goto(`/workspaces/${w}/runs/${run}`);
   await page.locator("#reassign-run").click();
   await page.locator("dialog #assignee_id").selectOption(owner.id);
   await page.locator("#reassign-note").fill("QA handover to owner");
   await page.locator("#reassign-run-form-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   await page.goto(`/workspaces/${w}/notifications`);
   await page.locator("#mark-all-read").click();
   await expect(page.locator('button[id^="read-notification-"]')).toHaveCount(0);
@@ -398,7 +398,7 @@ test("invitation, schedule, issue follow-up, discussion, handover and reassignme
   await page.locator("#invite-member").click();
   await page.locator("#invite-email").fill(`unused-${randomUUID()}@example.test`);
   await page.locator("#invite-member-form-submit").click();
-  await expect(page.locator("dialog")).toHaveCount(0);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
     true,
   );
@@ -626,6 +626,7 @@ test("operations catalog reload and all template drafts preserve their settings"
   await expect(page.locator('button[id^="template-"]')).toHaveCount(23);
   await page.reload();
   await expect(page.locator('button[id^="template-"]')).toHaveCount(23);
+  await page.locator("#process-templates > summary").click();
   for (const [index, template] of TEMPLATES.entries()) {
     if (index < 3) continue;
     await page.locator(`#template-${index}`).click();
@@ -645,7 +646,7 @@ test("operations catalog reload and all template drafts preserve their settings"
       });
     }
     await page.locator("#process-form-submit").click();
-    await expect(page.locator("dialog")).toHaveCount(0);
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
     const { data, error } = await owner.client
       .from("processes")
       .select("draft,published_version")
@@ -664,6 +665,80 @@ test("operations catalog reload and all template drafts preserve their settings"
     });
     expect(data?.published_version).toBeNull();
   }
+});
+
+test("owner can provision, assign and complete their own work without changing roles", async ({
+  page,
+}) => {
+  const owner = await actor("executing owner");
+  const w = (
+    await cmd(owner, null, "create_workspace", {
+      name: "Synthetic owner execution",
+      timezone: "UTC",
+    })
+  ).id;
+  const args = {
+    p_workspace: w,
+    p_target: owner.id,
+    p_owner: owner.id,
+    p_setup_key: "synthetic-owner-browser-v2",
+    p_previous_setup_keys: ["synthetic-owner-browser-v1"],
+    p_items: [
+      {
+        key: "prepare",
+        kind: "preparation",
+        content: {
+          ...flow([step("read")]),
+          title: "Synthetic owner preparation",
+        },
+      },
+    ],
+  };
+  const preview = await owner.client.rpc("reconcile_workspace_setup", { ...args, p_apply: false });
+  expect(preview.error).toBeNull();
+  expect(preview.data.items[0].state).toBe("create");
+  const applied = await owner.client.rpc("reconcile_workspace_setup", { ...args, p_apply: true });
+  expect(applied.error).toBeNull();
+  await login(page, owner);
+  await page.goto(`/workspaces/${w}/today`);
+  await page.getByRole("link", { name: "Synthetic owner preparation", exact: true }).click();
+  await page.locator("#step-value-read").check();
+  await save(page, "read");
+  await page.locator("#submit-run").click();
+  await expect(page.getByText("Work completed.")).toBeVisible();
+  await page.goto(`/workspaces/${w}/today`);
+  await page.locator("#new-work").click();
+  await expect(
+    page.getByText("As owner, you can do the work yourself or assign it to a team member."),
+  ).toBeVisible();
+  await page.locator("#task-assignee").selectOption(owner.id);
+  await expect(page.locator(`select[name="reviewer_id"] option[value="${owner.id}"]`)).toHaveCount(
+    1,
+  );
+  await page.locator("#task-title").fill("Synthetic owner quick task");
+  await page.locator("#task-instructions").fill("Perform the synthetic check");
+  await page.locator("#new-task-form-submit").click();
+  await expect(page).toHaveURL(/runs\//);
+  const input = page.locator('input[id^="step-value-"]');
+  const sid = (await input.getAttribute("id"))!.replace("step-value-", "");
+  await input.check();
+  await save(page, sid);
+  await page.locator("#submit-run").click();
+  await expect(page.getByText("Work completed.")).toBeVisible();
+  const membership = await owner.client
+    .from("memberships")
+    .select("role,active")
+    .eq("workspace_id", w)
+    .eq("user_id", owner.id)
+    .single();
+  expect(membership.error).toBeNull();
+  expect(membership.data).toEqual({ role: "owner", active: true });
+  const runs = await owner.client.from("runs").select("status,assignee_id").eq("workspace_id", w);
+  expect(runs.error).toBeNull();
+  expect(runs.data).toHaveLength(2);
+  expect(runs.data?.every((r) => r.status === "completed" && r.assignee_id === owner.id)).toBe(
+    true,
+  );
 });
 
 test("provisioned drafts and preparation remain honest in VA workspace views", async ({ page }) => {
@@ -700,6 +775,30 @@ test("provisioned drafts and preparation remain honest in VA workspace views", a
     p_apply: true,
   });
   expect(error).toBeNull();
+  const upgraded = await owner.client.rpc("reconcile_workspace_setup", {
+    p_workspace: w,
+    p_target: va.id,
+    p_owner: owner.id,
+    p_setup_key: "synthetic-browser-v2",
+    p_previous_setup_keys: ["synthetic-browser"],
+    p_items: items
+      .filter((i) => i.kind !== "training")
+      .map((i) =>
+        i.kind === "process"
+          ? { ...i, content: { ...i.content!, sop: "Reviewed synthetic draft improvement" } }
+          : i,
+      ),
+    p_apply: true,
+  });
+  expect(upgraded.error).toBeNull();
+  for (const table of ["processes", "runs"]) {
+    const records = await owner.client
+      .from(table)
+      .select("id", { count: "exact" })
+      .eq("workspace_id", w);
+    expect(records.error).toBeNull();
+    expect(records.count).toBe(1);
+  }
   await login(page, va);
   await page.goto(`/workspaces/${w}/today`);
   const preparation = page.getByRole("link", {
@@ -719,4 +818,198 @@ test("provisioned drafts and preparation remain honest in VA workspace views", a
   await expect(page.getByRole("row").filter({ hasText: "Synthetic setup draft" })).toContainText(
     /not started/i,
   );
+  await page.goto(`/workspaces/${w}/reviews`);
+  await expect(
+    page.getByRole("heading", { name: "Attention required", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Synthetic handover preparation", exact: true }),
+  ).toHaveCount(0);
+  await page.goto(`/workspaces/${w}/deadlines`);
+  await expect(page.getByRole("heading", { name: "Deadlines", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Synthetic handover preparation", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("process library search, draft changes, templates and owner approval work on every viewport", async ({
+  page,
+}, info) => {
+  const owner = await actor("owner reviewer"),
+    va = await actor("delegate");
+  const w = (
+    await cmd(owner, null, "create_workspace", {
+      name: "Synthetic process library",
+      timezone: "UTC",
+    })
+  ).id;
+  const invite = await cmd(owner, w, "invite_member", { email: va.email, role: "va" });
+  await cmd(va, null, "accept_invitation", { token: invite.token });
+  const content = {
+    ...flow([step("gate", { approval_before: true })], true),
+    title: "Synthetic daily review",
+    description: "Review the daily checklist",
+  };
+  const p = (await cmd(owner, w, "save_process", { content })).id;
+  const archive = (
+    await cmd(owner, w, "save_process", {
+      content: { ...content, title: "Synthetic archived process" },
+    })
+  ).id;
+  await cmd(owner, w, "archive_process", { id: archive, archived: true });
+  await login(page, owner);
+  await page.goto(`/workspaces/${w}/processes`);
+  await expect(page.getByRole("heading", { name: "Your processes" })).toBeVisible();
+  await expect(page.locator(`#process-row-${p}`)).toBeVisible();
+  await expect(page.locator(`#process-row-${archive}`)).toHaveCount(0);
+  await page.locator("#process-search").fill("no matching synthetic title");
+  await expect(page.getByText("No matching processes")).toBeVisible();
+  await page.locator("#process-search").fill(" DAILY ");
+  await expect(page.locator(`#process-row-${p}`)).toBeVisible();
+  await page.locator("#process-search").fill("");
+  await page.locator("#process-filter").selectOption("archived");
+  await expect(page.locator(`#process-row-${archive}`)).toBeVisible();
+  await page.locator("#process-filter").selectOption("draft");
+  await page.locator(`#publish-process-${p}`).click();
+  await expect(
+    page.getByText("New SOP version published. Existing runs are unchanged."),
+  ).toBeVisible();
+  await expect(page.locator(`#process-row-${p}`)).toHaveCount(0);
+  await page.locator("#process-filter").selectOption("published");
+  await page.locator(`#edit-process-${p}`).click();
+  await page.locator("#process-sop").fill("Unpublished synthetic revision");
+  await page.locator("#process-form-submit").click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await page.locator("#process-filter").selectOption("changed");
+  await expect(page.locator(`#process-row-${p}`)).toContainText("Unpublished changes");
+  await page.locator(`#read-process-${p}`).click();
+  await expect(page.locator("dialog[open]")).toContainText(content.sop);
+  await expect(page.locator("dialog[open]")).not.toContainText("Unpublished synthetic revision");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(`#read-process-${p}`)).toBeFocused();
+  await page.locator("#process-templates > summary").click();
+  await page.locator("#template-search").fill(TEMPLATES[0]!.title);
+  await expect(page.locator('button[id^="template-"]')).toHaveCount(1);
+  await page.locator("#template-0").click();
+  await expect(page.locator("#process-title")).toHaveValue(TEMPLATES[0]!.title);
+  await page.keyboard.press("Escape");
+  await page.locator("#process-templates > summary").click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `artifacts/qa/${info.project.name}-process-library.png`,
+    fullPage: true,
+  });
+  await page.locator(`#start-process-${p}`).click();
+  await page.locator("#task-assignee").selectOption(owner.id);
+  await page.locator("#reviewer_id").selectOption(owner.id);
+  await page.locator("#new-task-form-submit").click();
+  await expect(page).toHaveURL(/runs\//);
+  const runId = page.url().split("/runs/")[1]!;
+  await page.locator("#request-permission-gate").click();
+  await page
+    .locator("#permission-reason-gate")
+    .fill("Owner requests permission for synthetic action");
+  await page.locator("#permission-request-gate-submit").click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await page.locator('button[id^="decide-permission-"]').click();
+  await page.locator("#permission-note").fill("Owner explicitly approves this synthetic action");
+  await page.locator("#permission-decision-form-submit").click();
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await page.locator("#step-value-gate").check();
+  await save(page, "gate");
+  await page.locator("#submit-run").click();
+  await expect(page.getByText("Submitted for review.")).toBeVisible();
+  await expect(page.getByText(/You are reviewing your own work/)).toBeVisible();
+  await page.locator("#run-review-note").fill("Owner checked the synthetic result");
+  await page.locator("#review-run-form-submit").click();
+  await expect(page.getByText("Review recorded.")).toBeVisible();
+  const completed = await owner.client
+    .from("runs")
+    .select("status,snapshot")
+    .eq("id", runId)
+    .single();
+  expect(completed.error).toBeNull();
+  expect(completed.data?.status).toBe("completed");
+  expect(completed.data?.snapshot.sop).toBe(content.sop);
+  await page.goto(`/workspaces/${w}/processes`);
+  await page.locator(`#start-process-${p}`).click();
+  await page.locator("#task-assignee").selectOption(va.id);
+  await page.locator("#reviewer_id").selectOption(owner.id);
+  await page.locator("#new-task-form-submit").click();
+  await expect(page).toHaveURL(/runs\//);
+  const delegated = await owner.client
+    .from("runs")
+    .select("assignee_id,reviewer_id,status")
+    .eq("id", page.url().split("/runs/")[1]!)
+    .single();
+  expect(delegated.error).toBeNull();
+  expect(delegated.data).toEqual({
+    assignee_id: va.id,
+    reviewer_id: owner.id,
+    status: "not_started",
+  });
+});
+
+test("development actor token button copies only the verified signed-in session", async ({
+  page,
+  context,
+}) => {
+  const owner = await actor("dev token");
+  await login(page, owner);
+  const button = page.locator("#copy-actor-token");
+  if (process.env.QA_PRODUCTION_BUILD === "true") {
+    await expect(button).toHaveCount(0);
+    await expect(page.locator("#actor-token-status")).toHaveCount(0);
+    return;
+  }
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(page.locator("#actor-token-status")).toContainText("Actor token copied.");
+  // Never return or assert the token itself: only inspect Auth's verified identity in memory.
+  const result = await page.evaluate(
+    async ({ url, key }) => {
+      const token = await navigator.clipboard.readText();
+      const response = await fetch(`${url}/auth/v1/user`, {
+        headers: { apikey: key, Authorization: `Bearer ${token}` },
+      });
+      const user = await response.json();
+      const exposed = document.documentElement.outerHTML.includes(token);
+      await navigator.clipboard.writeText("");
+      return { ok: response.ok, id: user.id, exposed };
+    },
+    {
+      url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    },
+  );
+  expect(result).toEqual({ ok: true, id: owner.id, exposed: false });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
+    true,
+  );
+  // Simulate clipboard denial only after verifying the real clipboard/Auth path above.
+  await page.evaluate(() =>
+    Object.defineProperty(navigator.clipboard, "writeText", {
+      configurable: true,
+      value: async () => {
+        throw new DOMException("Denied", "NotAllowedError");
+      },
+    }),
+  );
+  await button.click();
+  await expect(page.locator("#actor-token-status")).toContainText("Could not copy.");
+  await expect(button).toBeEnabled();
+  await page.route("**/auth/v1/user", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Synthetic rejected session" }),
+    }),
+  );
+  await button.click();
+  await expect(page.locator("#actor-token-status")).toContainText("Could not verify your session.");
+  await expect(button).toBeEnabled();
 });
